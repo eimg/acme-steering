@@ -1,6 +1,6 @@
 # Implementation plan
 
-**Status:** inception complete; implementation not started
+**Status:** phase 1 first pass implemented; phase 1 completion items remain
 
 The plan intentionally proves one local mechanism at a time. Do not begin with cross-suite automation or external channels.
 
@@ -16,36 +16,47 @@ Exit: the document set is internally consistent and relative links resolve.
 
 ## Phase 1 — standalone fixture-backed vertical slice
 
+Implemented now:
+
 - One local service and durable store.
 - `Needs attention`, case detail, `Automated`, and `History`.
-- Fixture cases for decision, clarification, revision, exception, and escalation.
+- Fixture cases for decision, clarification, revision, and escalation.
 - Explicit structured resolution separate from discussion.
 - Small versioned policy evaluator demonstrating automatic and human-required outcomes.
-- Application acknowledgement, stale handling, rejection suppression, expiry, and restart recovery.
-- Standalone local operator; no Identity, sibling services, model, or network required.
+- Fixture application acknowledgement, stale handling, rejection suppression, and restart recovery.
+- Standalone local operator; no sibling services, model, or network required.
+- Optional Acme Identity HTTP adapter with fail-closed shared mode.
 - One offline verification command covering typecheck, tests, build, and acceptance flow.
+
+Still to complete before the phase exit:
+
+- Scheduled expiry and explicit safe-timeout behavior.
+- Fixture coverage for policy exceptions and richer action-attempt history.
+- Case ownership, assignment, reminder, delegation, and escalation routing.
 
 Exit: every journey in `PROJECT_SPEC.md` section 5 is demonstrated.
 
-## Phase 2 — first real product adapter
+## Phase 2 — workflow notification adapters (implemented first slice)
 
-- Inspect candidate source public APIs and authorization behavior.
-- Select the smallest journey that demonstrates discovery, manual fallback, human decision, policy automation, direct-action reconciliation, and idempotency.
-- Prefer the Projects/Issues implementation-start checkpoint if the public contract is sufficient.
-- Add only the smallest optional source contract for a proven gap.
-- Preserve the Projects → Issues → Helix boundary.
+- Prelude, Helix, Issues, and Projects publish best-effort durable lifecycle events when configured.
+- Steering journals information events and synchronizes stable actionable cases.
+- Duplicate delivery is idempotent and later source actions resolve or supersede stale cases.
+- Administrator approval invokes the first allowlisted product actions and records authoritative receipts; asynchronous acceptance still waits for a source event.
+- The Projects → Issues → Helix boundary remains unchanged.
 
 Exit: Steering can be stopped and the original manual journey still works unchanged.
 
 ## Phase 3 — shared local identity and permissions
 
-- Add the replaceable Acme Identity adapter.
-- Gate reading, deciding, managing policy, and automation with stable permission strings.
+- Extend the replaceable Acme Identity adapter already established in phase 1.
+- Extend the current read/decide gates to policy management, automation, ownership, and delegation.
 - Reauthorize domain actions at the owning product.
 - Add capability-based assignment, delegation, and escalation.
 - Keep standalone mode as the default independent path.
 
 Exit: Identity failure in shared mode fails closed without affecting standalone mode.
+
+The mechanical edge credentials and product reauthorization are implemented. Ownership, delegation, and risk-based automation in this phase remain deferred.
 
 ## Phase 4 — cross-product coverage
 
@@ -71,7 +82,7 @@ Each adapter must preserve the source product's ownership and direct manual path
 
 - Local operating-system notifications.
 - Replaceable external channel adapters.
-- Source-owned event streams plus reconciliation if polling latency is inadequate.
+- Durable outbox/retry delivery if best-effort source notification proves insufficient.
 - Separate policy service if independent consumers or deployment needs emerge.
 - Explicit export for a separate Decision Intelligence consumer.
 

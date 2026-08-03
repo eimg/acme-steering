@@ -54,6 +54,10 @@ The first implementation should favor a small, inspectable policy set rather tha
 
 Ambiguous, missing, conflicting, or invalid policy never becomes automatic authorization.
 
+The current `steering.delegation.v1` fixture evaluator implements this boundary narrowly: accepted, low-risk, reversible Prelude package creation is automatic; incomplete evidence defers; a repeated security finding escalates; an explicit fixture deny denies; everything else requires a human. It is working policy behavior for the reference slice, not a general configuration language or a claim that the same delegation suits every organization.
+
+That evaluator applies only to deterministic fixtures. Source-backed mechanical actions are currently `unassessed` and administrator-decided. Workflow owners provide deterministic state and effects but do not assign the organizational risk level; a later Steering policy layer will derive risk from structured impact facts.
+
 ## Rejection and revision
 
 Keep these outcomes distinct:

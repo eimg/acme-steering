@@ -19,22 +19,23 @@ These decisions form the accepted inception baseline. Future implementation may 
 | Integration | Public product adapters; no sibling imports or database reads |
 | Projects boundary | Preserve Projects → Issues → Helix; no direct Projects → Helix action |
 | Prelude boundary | Preserve accepted export → Helix pickup; Prelude does not trigger Helix |
-| Authentication | Standalone local operator or optional Acme Identity adapter |
-| Authorization | Permission strings and source reauthorization; no fixed role names |
+| Authentication | Standalone local operator or shared `acme-identity` consumer adapter; Identity service remains optional in `off` mode |
+| Authorization | Permission strings and source reauthorization; no fixed role names. First pass is administrator-only in practice through wildcard permission |
+| Runtime | TypeScript, Express, React/Vite, and SQLite in one independently runnable service |
+| First policy form | Small deterministic evaluator in code; no general policy language or policy editor |
 | Observability | Optional read-only correlation context, never workflow authority |
 | Advisor | Optional, case-bound, read-only, evidence-linked, non-authoritative |
 | Initial advisor access | Steering case plus optional authorized Observability reads |
 | External channels | Deferred; future notification adapters around the local inbox |
 | Decision Intelligence | Separate optional future product, not part of Steering |
 | Default port | `8323` reserved |
-| Launcher | Do not add until a runnable service and health behavior exist |
+| Launcher | Start Steering last through the root launcher's common `npm run dev` contract |
 
 ## Deliberately deferred
 
-- Exact implementation stack and package structure, although a single local TypeScript/HTTP/UI/SQLite shape is the leading suite-consistent option.
 - Exact policy configuration syntax and editing UI.
-- Final permission vocabulary after routes and actions exist.
-- Which source adapter ships first, pending public-contract verification.
+- Ownership semantics beyond the current administrator-only human mode. Source publishing uses product-bound `steering.notify.<product>` permissions; policy management and automation permissions remain future seams.
+- Additional action keys beyond the four mechanical reference journeys; risk assessment remains unimplemented and source-backed cases are explicitly unassessed.
 - External email, Slack, Teams, Telegram, desktop, or mobile notification adapters.
 - Direct advisor adapters to source products.
 - Whether policy later merits an independent headless service.

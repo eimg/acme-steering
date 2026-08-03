@@ -1,6 +1,6 @@
 # Acme Steering agent guide
 
-Acme Steering is the optional local decision inbox and delegation-policy coordinator for the Acme Software Factory. Implementation has not started; the repository currently contains the accepted inception documents.
+Acme Steering is the optional local decision inbox and delegation-policy coordinator for the Acme Software Factory. The repository contains a runnable fixture-backed first pass plus optional workflow-notification adapters from the four workflow-owning siblings.
 
 Treat this as an executable reference architecture, not a universal governance platform. Keep the first implementation focused, independently runnable, and useful without sibling services, credentials, a model provider, or network access.
 
@@ -32,16 +32,29 @@ Treat this as an executable reference architecture, not a universal governance p
 ## Repository state
 
 - Reserved default port: `8323`.
-- No runtime or stack has been created yet.
-- Do not add a root gitlink until this child repository has an intentional commit and a portable remote.
-- Do not add Steering to the suite launcher until it has a documented runnable command and health behavior.
+- Runtime: Node.js, TypeScript, Express, React/Vite, and SQLite via `better-sqlite3`.
+- `ACME_AUTH_MODE=off` is the standalone default and resolves an explicit local development administrator.
+- `ACME_AUTH_MODE=local` uses the shared `acme-identity` consumer package over HTTP and fails closed when Identity is unavailable.
+- Current route gates are `steering.read` and `steering.decide`; `steering.manage` and `steering.automate` are exposed as future capability seams.
+- The root gitlink and portable GitHub remote already exist.
+- The suite launcher starts Steering last through `npm run dev`; standalone development uses the same command.
+- Fixture cases still use deterministic acknowledgements. Source-backed cases enter through `acme.steering.notification.v1`; approval invokes only an allowlisted `acme.steering.action.v1` command and must not be described as applied without an authoritative product receipt or confirming event.
+- Source-backed risk is currently `unassessed`. Do not infer risk from sibling-provided labels or add ownership routing until those distinct layers are designed.
+- Current human access is administrator-only. Do not infer or invent workflow ownership; preserve the source product/resource seam for a later explicit ownership model.
+- Notification delivery is optional, post-transaction, bounded, idempotent, and non-blocking. Source products remain useful when Steering is absent.
 
 ## Validation
 
-For documentation-only work:
+For all implementation changes:
+
+```bash
+npm run verify
+```
+
+For documentation-only work, at minimum:
 
 ```bash
 git diff --check
 ```
 
-Also verify every relative Markdown link resolves. Once implementation exists, replace this minimal gate with one documented `verify` command covering typecheck, tests, build, and the standalone acceptance journey.
+Also verify every relative Markdown link resolves. HTTP tests open temporary loopback listeners; a restricted execution environment may need local binding permission before treating `listen EPERM` as a regression.

@@ -55,6 +55,8 @@ The source product revalidates authorization and current state, then reports whe
 - stale because relevant source state changed;
 - refused by a hard domain or permission rule;
 - unsuccessful because execution failed;
+- accepted for asynchronous completion, which remains `awaiting_source`;
+- unavailable or timed out with an unknown outcome, which must not be reported as a source failure and remains in the Attention inbox until a later source event reconciles it;
 - superseded by direct action or a newer case.
 
 Only successful application proves the domain effect occurred.

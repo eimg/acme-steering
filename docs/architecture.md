@@ -31,7 +31,7 @@ Runs inside Steering for the initial product. It is a distinct host-owned capabi
 
 It governs whether Steering may invoke a valid source action. It cannot weaken product-enforced invariants.
 
-### Escalation router
+### Escalation router (deferred)
 
 Routes by permission and resource ownership rather than fixed role names. It records deadlines, reminders, authorized delegation, higher-authority routing, and the declared safe behavior when nobody responds.
 
@@ -41,7 +41,9 @@ Adapters translate public source state into decision context and invoke existing
 
 Adapters never import sibling source packages, read sibling databases, or attach a credential to an untrusted origin. Steering must not bypass established workflow ownership merely because two actions are technically reachable.
 
-Polling and explicit refresh are sufficient initial discovery mechanisms. Source-pushed events, webhooks, or streaming should be added only after a demonstrated latency need and must retain reconciliation.
+The first implemented seam is a source-pushed, versioned notification with idempotent ingestion. It is best-effort and post-transaction: source success never waits for Steering. Every event enters the Activity journal; actionable event state creates, refreshes, or closes one stable case. See [workflow-notifications.md](workflow-notifications.md).
+
+This slice implements narrow remote command delivery through [action-contract.md](action-contract.md). It uses server-held scoped credentials, instance and trusted-origin matching, live source-revision validation, allowlisted action keys, and authoritative receipts. It does not implement generic workflow mutation, ownership routing, advisor behavior, or risk assessment.
 
 ### Optional advisor
 
@@ -51,7 +53,7 @@ Advisor answers distinguish generated interpretation from linked source evidence
 
 ### Local store
 
-The first implementation should durably preserve:
+The current SQLite store durably preserves cases, policy results, discussion, structured resolutions, actor attribution, and fixture application outcomes. It is designed to grow toward:
 
 - cases and source revision references;
 - policy identity, version, input facts, result, and explanation;
@@ -72,14 +74,14 @@ Standalone mode must remain available with one explicit local operator. Shared m
 - Permission strings, not current role names, define required authority.
 - Identity unavailability in shared mode fails closed; it is not mistaken for an anonymous or standalone user.
 
-Suggested permission vocabulary is deliberately provisional until implementation confirms route boundaries:
+The first-pass capability vocabulary is:
 
 - `steering.read`
 - `steering.decide`
 - `steering.manage`
 - `steering.automate`
 
-Product-specific permissions remain owned by their products. Holding `steering.decide` alone does not grant `issues.trigger`, `prelude.export`, or another domain capability.
+Product-specific permissions remain owned by their products. Holding `steering.decide` alone does not grant the action credentials `issues.steering.trigger`, `prelude.steering.export`, or another domain capability.
 
 ## Observability boundary
 

@@ -1,6 +1,6 @@
 # Acme Steering inception specification
 
-**Status:** accepted inception baseline; implementation not started
+**Status:** accepted inception baseline; standalone first pass in progress
 
 **Product:** `acme-steering`
 
@@ -102,6 +102,26 @@ The first runnable slice should prove the mechanism with deterministic local fix
 
 The first real adapter should be selected only after verifying the owning product's current public API. A strong candidate is the existing Acme Projects → Acme Issues implementation-start checkpoint because it demonstrates manual fallback, human authorization, policy automation, and reconciliation without changing the Projects → Issues → Helix boundary.
 
+### Implemented in the current slice
+
+- A durable SQLite case and discussion store with restart recovery.
+- `Needs attention`, `Activity`, `Automated`, and `History` in a responsive email-shaped UI.
+- Explicit structured decisions kept separate from case discussion.
+- A versioned, deterministic policy evaluator with automatic, human-required, denied, deferred, and escalated classifications.
+- Fixture application acknowledgement, rejection suppression, stale-revision protection, and human/service-principal provenance.
+- Standalone `off` authentication and replaceable Acme Identity `local` authentication with fail-closed behavior.
+- One verification command covering typechecking, policy, persistence, HTTP/auth behavior, and production build.
+- Optional `acme.steering.notification.v1` ingestion from Prelude, Helix, Issues, and Projects with an idempotent Activity journal and source-event reconciliation.
+- Source-backed approval waits for source confirmation rather than claiming a domain effect.
+
+### Still required to complete the original gate
+
+- Scheduled expiry and declared safe-timeout behavior.
+- A fixture exception journey and fuller application-attempt history.
+- Case ownership, capability-based assignment, delegation, reminders, and escalation routing.
+- Additional product actions beyond the first allowlisted Prelude export, Projects submission, Issues trigger, and Helix recovery commands.
+- Risk assessment, ownership routing, and advisor assistance remain separate later increments.
+
 ## 6. Non-functional expectations
 
 - Local-first and independently runnable.
@@ -127,7 +147,7 @@ The first real adapter should be selected only after verifying the owning produc
 
 ## 8. First completion gate
 
-The first implementation is complete only when:
+The standalone completion gate is complete only when:
 
 - all standalone journeys in section 5 work without sibling services or network access;
 - manual resolution, automatic policy resolution, rejection, stale handling, and restart recovery are verified;
