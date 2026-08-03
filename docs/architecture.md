@@ -31,6 +31,14 @@ Runs inside Steering for the initial product. It is a distinct host-owned capabi
 
 It governs whether Steering may invoke a valid source action. It cannot weaken product-enforced invariants.
 
+The evaluator reads the active immutable `acme.steering.policy.v1` version. Rules use bounded exact action, risk, reversibility, and scalar-fact conditions; they are evaluated in declared order with a safe explicit fallback. Policy activation never retroactively rewrites a case's recorded evaluation.
+
+### Configuration author
+
+The Configuration screen supports direct declarative editing and agent-assisted authoring. Both paths produce the same complete policy document, pass through the same deterministic validator, and require a separate human activation guarded by `steering.manage`.
+
+The authoring agent receives the active policy and its own conversation only. It has no product adapter, sibling-specific endpoint, case-decision tool, policy activation tool, or implicit Observability access. Without a model credential, a deterministic fake author preserves the complete local test journey. This component is distinct from the deferred case advisor: it helps write configuration, not decide a workflow case.
+
 ### Escalation router (deferred)
 
 Routes by permission and resource ownership rather than fixed role names. It records deadlines, reminders, authorized delegation, higher-authority routing, and the declared safe behavior when nobody responds.
@@ -43,13 +51,13 @@ Adapters never import sibling source packages, read sibling databases, or attach
 
 The first implemented seam is a source-pushed, versioned notification with idempotent ingestion. It is best-effort and post-transaction: source success never waits for Steering. Every event enters the Activity journal; actionable event state creates, refreshes, or closes one stable case. See [workflow-notifications.md](workflow-notifications.md).
 
-This slice implements narrow remote command delivery through [action-contract.md](action-contract.md). It uses server-held scoped credentials, instance and trusted-origin matching, live source-revision validation, allowlisted action keys, and authoritative receipts. It does not implement generic workflow mutation, ownership routing, advisor behavior, or risk assessment.
+This slice implements narrow remote command delivery through [action-contract.md](action-contract.md). It uses server-held scoped credentials, instance and trusted-origin matching, live source-revision validation, allowlisted action keys, and authoritative receipts. It does not implement generic workflow mutation, ownership routing, advisor access to source products, or risk assessment.
 
-### Optional advisor
+### Case advisor
 
-The advisor is bound to one case. Its initial context consists of the decision-grade case plus optional authorized Observability reads. It receives no standing write tools and no implicit access to all source products.
+The implemented advisor is bound to one case. Its initial context consists of the decision-grade case and its bounded durable discussion. It receives no standing tools, write capability, implicit source-product access, or Observability access. A deterministic fake adapter preserves offline operation; an optional OpenRouter adapter uses the same bounded contract.
 
-Advisor answers distinguish generated interpretation from linked source evidence, disclose missing or stale context, and never become the policy result or structured resolution.
+Advisor answers are visibly attributed generated discussion. They distinguish interpretation from linked evidence, disclose missing or stale context, and never become the policy result or structured resolution. A successful turn atomically records the human question and advisor response; provider failure records neither. If source revision or case status changes while the answer is generated, the response is discarded for fresh review.
 
 ### Local store
 

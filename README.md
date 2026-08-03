@@ -2,7 +2,7 @@
 
 Acme Steering is the optional local decision inbox and policy-guided human-steering layer for the Acme Software Factory. It coordinates when valid product actions may proceed automatically, when a person must decide, and how unresolved decisions are routed without replacing the products that own the underlying workflows.
 
-**Status:** runnable standalone first pass. The durable inbox, explicit decisions, workflow notification and decision adapters, four narrow product-owned actions, a small delegation-policy evaluator, and shared Acme Identity client integration are implemented. Escalation routing, source-specific decision handling, and the optional advisor remain deferred.
+**Status:** runnable local Steering service. The durable inbox, explicit decisions, workflow notification and decision adapters, four narrow product-owned actions, versioned delegation configuration with an optional authoring agent, a case-bound read-only advisor, and shared Acme Identity client integration are implemented. Escalation routing, source-specific decision handling, risk assessment, and advisor evidence enrichment remain deferred.
 
 **Reserved default port:** `8323`
 
@@ -25,6 +25,8 @@ Acme Steering
 ```
 
 The primary UI is intentionally email-shaped: a finite `Needs attention` list, a case detail with evidence and explicit actions, an `Automated` view, and durable `History`. It is not a chat product, project tracker, activity feed, or replacement for Acme Observability.
+
+The Configuration screen is a bounded exception to the case-shaped inbox: operators may inspect and directly edit the active declarative policy or discuss it with a config authoring agent. The agent receives only the policy and its conversation, produces advice or a complete proposal, and cannot activate its own work.
 
 ## Ownership boundary
 
@@ -65,6 +67,10 @@ npm run dev
 
 Open <http://127.0.0.1:8323>. The default `ACME_AUTH_MODE=off` exposes an explicit local development administrator and requires no sibling products, credentials, model, or network after installation. State is stored in `data/steering.db` and retained across restarts.
 
+Configuration authoring is also offline-first. Without `OPENROUTER_API_KEY`, a deterministic `FakeConfigAgent` explains the current policy and produces a safe no-op proposal for exercising review and activation. Set `OPENROUTER_API_KEY` and optionally `ACME_STEERING_MODEL` for live OpenRouter-backed discussion. The live agent has no sibling-product tools or special access path.
+
+Every case discussion also offers **Ask advisor**. The first advisor slice receives the current case, its evidence labels, policy result, and durable discussion only. It can explain routing, compare consequences, identify missing context, or help draft reasoning, but its answer is stored as generated discussion and cannot resolve the case. Without `OPENROUTER_API_KEY`, `FakeCaseAdvisor` keeps this flow testable offline; `ACME_STEERING_ADVISOR_MODEL` may override the live model. Direct sibling and Observability reads remain deferred.
+
 To exercise shared local authentication instead:
 
 ```bash
@@ -89,4 +95,4 @@ This runs typechecking, policy/store/API tests, and the production build.
 
 ## Current implementation boundary
 
-The shipped slice retains deterministic fixtures and adds optional source-pushed workflow adapters, an Activity journal, durable source decision ledgers, explicit retry for unavailable decision delivery, and product-owned mechanical action invocation. Issues and Projects project the decision into their existing comments, Prelude shows it in inception detail, and Helix shows its checkpoint effect without treating the notice as a run command. Reminders or expiry, background delivery retry, broader source-specific handling policies, ownership routing, risk assessment, policy editing, and the advisor remain deferred.
+The shipped slice retains deterministic fixtures and adds optional source-pushed workflow adapters, an Activity journal, durable source decision ledgers, explicit retry for unavailable decision delivery, product-owned mechanical action invocation, immutable policy versions, and case-bound advice. Direct JSON authoring and agent proposals converge on the same validator and require explicit `steering.manage` activation. Advisor exchanges converge on ordinary durable case discussion and never authorize. Existing cases retain their evaluated policy snapshot. Issues and Projects project decisions into existing comments, Prelude shows them in inception detail, and Helix shows checkpoint effects without treating a notice as a run command. Reminders or expiry, background delivery retry, broader source-specific handling policies, ownership routing, risk assessment, and advisor access to authorized external context remain deferred.

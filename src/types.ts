@@ -74,6 +74,67 @@ export interface PolicyDecision {
   explanation: string;
 }
 
+export type PolicyFactOperator = "equals" | "not_equals" | "gte" | "lte" | "present";
+
+export interface PolicyFactCondition {
+  key: string;
+  operator: PolicyFactOperator;
+  value?: string | number | boolean;
+}
+
+export interface DelegationRule {
+  id: string;
+  description: string;
+  enabled: boolean;
+  outcome: PolicyOutcome;
+  match: {
+    action?: string;
+    risk?: RiskLevel;
+    reversible?: boolean;
+    facts?: PolicyFactCondition[];
+  };
+  explanation: string;
+}
+
+export interface SteeringPolicyDraft {
+  schemaVersion: "acme.steering.policy.v1";
+  name: string;
+  defaultOutcome: PolicyOutcome;
+  defaultExplanation: string;
+  rules: DelegationRule[];
+}
+
+export interface SteeringPolicyConfig extends SteeringPolicyDraft {
+  version: number;
+  createdAt: string;
+  createdBy: SteeringActor;
+  changeSummary: string;
+}
+
+export interface ConfigAgentMessage {
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+export interface ConfigAgentSession {
+  id: string;
+  status: "active" | "error" | "applied";
+  messages: ConfigAgentMessage[];
+  proposedConfig?: SteeringPolicyDraft;
+  proposalSummary?: string;
+  basedOnVersion: number;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConfigAgentTurn {
+  message: string;
+  proposedConfig?: SteeringPolicyDraft;
+  proposalSummary?: string;
+}
+
 export interface SteeringActor {
   id: string;
   issuer: string;

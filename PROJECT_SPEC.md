@@ -1,6 +1,6 @@
 # Acme Steering inception specification
 
-**Status:** accepted inception baseline; standalone first pass in progress
+**Status:** accepted product baseline; incremental implementation in progress
 
 **Product:** `acme-steering`
 
@@ -108,6 +108,8 @@ The first real adapter should be selected only after verifying the owning produc
 - `Needs attention`, `Activity`, `Automated`, and `History` in a responsive email-shaped UI.
 - Explicit structured decisions kept separate from case discussion.
 - A versioned, deterministic policy evaluator with automatic, human-required, denied, deferred, and escalated classifications.
+- Immutable declarative policy versions, direct expert editing, and a config-only authoring agent whose proposals require explicit human activation.
+- A case-bound advisor in every durable discussion, with offline/live adapters and no resolution or workflow authority.
 - Fixture application acknowledgement, rejection suppression, stale-revision protection, and human/service-principal provenance.
 - Standalone `off` authentication and replaceable Acme Identity `local` authentication with fail-closed behavior.
 - One verification command covering typechecking, policy, persistence, HTTP/auth behavior, and production build.
@@ -121,7 +123,7 @@ The first real adapter should be selected only after verifying the owning produc
 - A fixture exception journey and fuller application-attempt history.
 - Case ownership, capability-based assignment, delegation, reminders, and escalation routing.
 - Additional product actions beyond the first allowlisted Prelude export, Projects submission, Issues trigger, and Helix recovery commands.
-- Risk assessment, ownership routing, and advisor assistance remain separate later increments.
+- Risk assessment, ownership routing, and advisor enrichment from authorized external context remain separate later increments.
 
 ## 6. Non-functional expectations
 

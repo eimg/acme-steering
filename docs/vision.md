@@ -49,9 +49,9 @@ An item explains:
 
 Discussion supports clarification, but only an explicit resolution carries authority. The same case may be resolved directly in its source product; Steering records that fact rather than forcing all human work through one UI.
 
-## Optional advisor
+## Case advisor
 
-A Steering Advisor may help a human understand one case. It is not a general suite chatbot and not the authority making the decision.
+The implemented Steering Advisor helps a human understand one case from its decision-grade record and durable discussion. It is not a general suite chatbot and not the authority making the decision. Optional authorized Observability enrichment remains a later seam.
 
 It may:
 
@@ -62,7 +62,7 @@ It may:
 - use allowlisted Observability facts to explain cross-product state;
 - draft a rationale for the human to review.
 
-It may not approve, change policy, bypass authorization, inherit opaque execution-agent context, or present generated claims without source references. Steering remains useful when the advisor is absent.
+It may not approve, change policy, bypass authorization, inherit opaque execution-agent context, or present generated claims as source evidence. Steering remains useful without a model provider through its deterministic offline advisor.
 
 ## Later seams
 

@@ -23,6 +23,7 @@ Implemented now:
 - Fixture cases for decision, clarification, revision, and escalation.
 - Explicit structured resolution separate from discussion.
 - Small versioned policy evaluator demonstrating automatic and human-required outcomes.
+- Immutable declarative policy versions with direct editing and config-agent proposals behind explicit human activation.
 - Fixture application acknowledgement, stale handling, rejection suppression, and restart recovery.
 - Standalone local operator; no sibling services, model, or network required.
 - Optional Acme Identity HTTP adapter with fail-closed shared mode.
@@ -50,7 +51,7 @@ Exit: Steering can be stopped and the original manual journey still works unchan
 ## Phase 3 — shared local identity and permissions
 
 - Extend the replaceable Acme Identity adapter already established in phase 1.
-- Extend the current read/decide gates to policy management, automation, ownership, and delegation.
+- Extend the current read/decide/manage gates to automation, ownership, and delegation.
 - Reauthorize domain actions at the owning product.
 - Add capability-based assignment, delegation, and escalation.
 - Keep standalone mode as the default independent path.
@@ -70,10 +71,12 @@ Add adapters incrementally for proven checkpoints such as:
 
 Each adapter must preserve the source product's ownership and direct manual path.
 
-## Phase 5 — optional advisor
+## Phase 5 — optional advisor (case-only slice implemented)
 
-- Case-bound advisor experience.
-- Steering case as primary context.
+- Case-bound advisor experience in every case discussion. *(implemented)*
+- Steering case and bounded durable discussion as primary context. *(implemented)*
+- Offline fake and optional live model adapter. *(implemented)*
+- Generated-answer attribution with no decision or action authority. *(implemented)*
 - Optional authorized Observability adapter for correlation.
 - Evidence links, freshness, uncertainty, and explicit insufficient-context behavior.
 - No standing write tools or automatic authorization.

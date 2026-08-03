@@ -1,5 +1,5 @@
 export type CaseView = "attention" | "automated" | "history";
-export type InboxView = CaseView | "activity";
+export type InboxView = CaseView | "activity" | "config";
 export type Resolution = "approve" | "reject" | "request_revision" | "defer" | "escalate" | "cancel";
 
 export interface Principal {
@@ -30,7 +30,49 @@ export interface Config {
   authMode: "off" | "local";
   provider: string;
   advisorEnabled: boolean;
+  advisorMode: "openrouter" | "fake";
+  advisorModel?: string;
+  configAgentMode: "openrouter" | "fake";
+  configAgentModel?: string;
   fixtureMode: boolean;
+}
+
+export type PolicyOutcome = "automatic" | "human_required" | "deny" | "defer" | "escalate";
+export interface PolicyDraft {
+  schemaVersion: "acme.steering.policy.v1";
+  name: string;
+  defaultOutcome: PolicyOutcome;
+  defaultExplanation: string;
+  rules: Array<{
+    id: string;
+    description: string;
+    enabled: boolean;
+    outcome: PolicyOutcome;
+    match: {
+      action?: string;
+      risk?: "unassessed" | "low" | "medium" | "high";
+      reversible?: boolean;
+      facts?: Array<{ key: string; operator: "equals" | "not_equals" | "gte" | "lte" | "present"; value?: string | number | boolean }>;
+    };
+    explanation: string;
+  }>;
+}
+export interface PolicyConfig extends PolicyDraft {
+  version: number;
+  createdAt: string;
+  createdBy: Principal;
+  changeSummary: string;
+}
+export interface ConfigAgentSession {
+  id: string;
+  status: "active" | "error" | "applied";
+  messages: Array<{ role: "user" | "assistant"; content: string; createdAt: string }>;
+  proposedConfig?: PolicyDraft;
+  proposalSummary?: string;
+  basedOnVersion: number;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Choice {
@@ -130,12 +172,33 @@ export const api = {
     method: "POST",
     body: JSON.stringify({ body }),
   }),
+  askAdvisor: (id: string, prompt: string) => json<SteeringCase>(`/api/cases/${encodeURIComponent(id)}/advisor`, {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+  }),
   resolve: (id: string, resolution: Resolution, rationale: string, sourceRevision: string) =>
     json<SteeringCase>(`/api/cases/${encodeURIComponent(id)}/resolve`, {
       method: "POST",
       body: JSON.stringify({ resolution, rationale, sourceRevision }),
     }),
   redeliverDecision: (id: string) => json<SteeringCase>(`/api/cases/${encodeURIComponent(id)}/redeliver-decision`, {
+    method: "POST",
+  }),
+  policyConfig: () => json<{ active: PolicyConfig; history: PolicyConfig[] }>("/api/policy-config"),
+  activatePolicy: (config: PolicyDraft, expectedVersion: number, changeSummary: string) =>
+    json<PolicyConfig>("/api/policy-config/activate", {
+      method: "POST",
+      body: JSON.stringify({ config, expectedVersion, changeSummary }),
+    }),
+  startConfigAgent: (prompt: string) => json<ConfigAgentSession>("/api/config-agent/sessions", {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+  }),
+  messageConfigAgent: (id: string, prompt: string) => json<ConfigAgentSession>(`/api/config-agent/sessions/${encodeURIComponent(id)}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+  }),
+  activateAgentProposal: (id: string) => json<{ active: PolicyConfig; session: ConfigAgentSession }>(`/api/config-agent/sessions/${encodeURIComponent(id)}/activate`, {
     method: "POST",
   }),
 };

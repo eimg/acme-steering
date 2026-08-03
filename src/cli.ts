@@ -16,6 +16,9 @@ Environment:
   ACME_AUTH_MODE          off | local (default: off)
   ACME_IDENTITY_URL       Identity URL in local mode (default: http://127.0.0.1:8316)
   ACME_STEERING_DATA_DIR  Local data directory (default: ./data)
+  OPENROUTER_API_KEY      Enables the live config author (else FakeConfigAgent)
+  ACME_STEERING_MODEL     OpenRouter model id for config authoring
+  ACME_STEERING_ADVISOR_MODEL  Optional OpenRouter model override for case advice
   PORT                    Default port if --port is not given`);
   process.exit(2);
 }

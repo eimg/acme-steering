@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { evaluatePolicy } from "./policy.js";
+import { PolicyConfigStore } from "./configStore.js";
 import type {
   CaseDetail,
   CaseKind,
@@ -65,7 +66,11 @@ const steeringService: SteeringActor = {
 };
 
 export class SteeringStore {
-  constructor(private readonly db: Database.Database) {}
+  private readonly policyConfigs: PolicyConfigStore;
+
+  constructor(private readonly db: Database.Database) {
+    this.policyConfigs = new PolicyConfigStore(db);
+  }
 
   countCases(): number {
     return Number((this.db.prepare("SELECT COUNT(*) AS count FROM steering_cases").get() as { count: number }).count);
@@ -120,7 +125,7 @@ export class SteeringStore {
       risk: input.risk,
       reversible: input.reversible,
       facts: input.facts,
-    });
+    }, this.policyConfigs.active());
     const now = input.createdAt ?? new Date().toISOString();
     const automatic = policy.outcome === "automatic";
     const status = input.initialStatus ?? (automatic ? "applied" : "pending");
@@ -203,14 +208,26 @@ export class SteeringStore {
   }
 
   addMessage(caseId: string, body: string, author: SteeringActor): CaseDetail {
+    return this.addMessages(caseId, [{ body, author }]);
+  }
+
+  addMessages(caseId: string, entries: Array<{ body: string; author: SteeringActor }>): CaseDetail {
     this.getCase(caseId);
+    if (!entries.length) return this.getCase(caseId);
     const now = new Date().toISOString();
+    const updatedAt = new Date(Date.parse(now) + entries.length - 1).toISOString();
     this.db.transaction(() => {
-      this.db.prepare(`
+      const insert = this.db.prepare(`
         INSERT INTO case_messages (case_id, body, author_json, created_at)
         VALUES (?, ?, ?, ?)
-      `).run(caseId, body, JSON.stringify(author), now);
-      this.db.prepare("UPDATE steering_cases SET updated_at = ? WHERE id = ?").run(now, caseId);
+      `);
+      entries.forEach((entry, index) => insert.run(
+        caseId,
+        entry.body,
+        JSON.stringify(entry.author),
+        new Date(Date.parse(now) + index).toISOString(),
+      ));
+      this.db.prepare("UPDATE steering_cases SET updated_at = ? WHERE id = ?").run(updatedAt, caseId);
     })();
     return this.getCase(caseId);
   }
@@ -401,8 +418,8 @@ export class SteeringStore {
         action: steering.action ?? notification.event.type,
         risk: "unassessed",
         reversible: steering.reversible ?? false,
-        facts: steering.facts ?? {},
-      });
+        facts: { ...steering.facts, sourceNotification: true },
+      }, this.policyConfigs.active());
       this.db.prepare(`
         UPDATE steering_cases SET kind=?, title=?, source_ref=?, source_revision=?, action=?, reason=?, summary=?,
           proposed_action=?, recommendation=?, risk=?, reversible=?, evidence_json=?, choices_json=?, facts_json=?,

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ApiError, api, type CaseView, type Config, type InboxView, type Resolution, type Session, type SteeringCase, type WorkflowEvent } from "./api";
+import { ApiError, api, type CaseView, type Config, type ConfigAgentSession, type InboxView, type PolicyConfig, type PolicyDraft, type Resolution, type Session, type SteeringCase, type WorkflowEvent } from "./api";
 
 const views: Array<{ id: InboxView; label: string; hint: string }> = [
   { id: "attention", label: "Needs attention", hint: "Waiting for judgment" },
   { id: "activity", label: "Activity", hint: "Workflow notifications" },
   { id: "automated", label: "Automated", hint: "Delegated by policy" },
   { id: "history", label: "History", hint: "Resolved and closed" },
+  { id: "config", label: "Configuration", hint: "Policy and agent authoring" },
 ];
 
 export function App() {
@@ -38,7 +39,7 @@ export function App() {
   if (!session.capabilities.read) {
     return config.authMode === "local"
       ? <AccessRequired session={session} onSessionChange={loadSession} />
-      : <CenteredState title="Administrator access required" body="This first pass allows only principals with steering.read." />;
+      : <CenteredState title="Steering access required" body="This workspace requires a principal with steering.read." />;
   }
 
   return <Inbox config={config} session={session} onSessionChange={loadSession} />;
@@ -63,6 +64,12 @@ function Inbox({ config, session, onSessionChange }: { config: Config; session: 
     try {
       const nextSummary = await api.summary();
       setSummary(nextSummary);
+      if (view === "config") {
+        setItems([]);
+        setDetail(undefined);
+        setSelectedEvent(undefined);
+        return;
+      }
       if (view === "activity") {
         const nextEvents = await api.events();
         setEvents(nextEvents.items);
@@ -148,16 +155,17 @@ function Inbox({ config, session, onSessionChange }: { config: Config; session: 
             {views.map((item) => (
               <button key={item.id} className={`nav-item ${view === item.id ? "active" : ""}`} onClick={() => setView(item.id)}>
                 <span><strong>{item.label}</strong><small>{item.hint}</small></span>
-                <b>{item.id === "activity" ? events.length : summary[item.id]}</b>
+                <b>{item.id === "activity" ? events.length : item.id === "config" ? "⚙" : summary[item.id]}</b>
               </button>
             ))}
           </nav>
           <div className="sidebar-note">
             <span className="status-dot" />
-            <div><strong>Standalone first pass</strong><p>Manual workflow remains the fallback. No sibling product is required.</p></div>
+            <div><strong>Local steering active</strong><p>Source products retain workflow authority through explicit public contracts.</p></div>
           </div>
         </aside>
 
+        {view === "config" ? <ConfigWorkspace config={config} canManage={session.capabilities.manage} /> : <>
         <section className="case-list-panel">
           <div className="panel-heading">
             <div><span className="eyebrow">{viewLabel(view)}</span><h1>{view === "activity" ? events.length : summary[view]} {view === "activity" ? "events" : summary[view] === 1 ? "case" : "cases"}</h1></div>
@@ -193,13 +201,123 @@ function Inbox({ config, session, onSessionChange }: { config: Config; session: 
             <CaseDetail
               item={detail}
               canDecide={session.capabilities.decide}
+              advisor={config.advisorEnabled ? { mode: config.advisorMode, model: config.advisorModel } : undefined}
               onMutation={afterMutation}
             />
           ) : <Empty label="Select a case to inspect its decision context." />}
         </section>
+        </>}
       </main>
     </div>
   );
+}
+
+function ConfigWorkspace({ config, canManage }: { config: Config; canManage: boolean }) {
+  const [active, setActive] = useState<PolicyConfig>();
+  const [history, setHistory] = useState<PolicyConfig[]>([]);
+  const [editor, setEditor] = useState("");
+  const [changeSummary, setChangeSummary] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [agentSession, setAgentSession] = useState<ConfigAgentSession>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const [notice, setNotice] = useState<string>();
+
+  const load = useCallback(async () => {
+    const result = await api.policyConfig();
+    setActive(result.active);
+    setHistory(result.history);
+    setEditor(JSON.stringify(policyDraft(result.active), null, 2));
+  }, []);
+
+  useEffect(() => { void load().catch((nextError) => setError(errorMessage(nextError))); }, [load]);
+
+  const activateDirect = async () => {
+    if (!active) return;
+    setBusy(true); setError(undefined); setNotice(undefined);
+    try {
+      const parsed = JSON.parse(editor) as PolicyDraft;
+      const next = await api.activatePolicy(parsed, active.version, changeSummary);
+      setNotice(`Activated policy version ${next.version}. Existing case evaluations remain historical snapshots.`);
+      setChangeSummary("");
+      setAgentSession(undefined);
+      await load();
+    } catch (nextError) { setError(errorMessage(nextError)); }
+    finally { setBusy(false); }
+  };
+
+  const sendAgentPrompt = async () => {
+    if (!prompt.trim()) return;
+    setBusy(true); setError(undefined); setNotice(undefined);
+    try {
+      const next = agentSession?.status === "active"
+        ? await api.messageConfigAgent(agentSession.id, prompt.trim())
+        : await api.startConfigAgent(prompt.trim());
+      setAgentSession(next);
+      setPrompt("");
+    } catch (nextError) { setError(errorMessage(nextError)); }
+    finally { setBusy(false); }
+  };
+
+  const activateProposal = async () => {
+    if (!agentSession?.proposedConfig) return;
+    setBusy(true); setError(undefined); setNotice(undefined);
+    try {
+      const result = await api.activateAgentProposal(agentSession.id);
+      setAgentSession(result.session);
+      setNotice(`Activated agent-assisted policy version ${result.active.version}.`);
+      await load();
+    } catch (nextError) { setError(errorMessage(nextError)); }
+    finally { setBusy(false); }
+  };
+
+  return <section className="config-workspace">
+    <div className="config-heading">
+      <div><span className="eyebrow">Delegation policy</span><h1>Steering configuration</h1><p>Configuration is the source of truth. The agent may explain or propose; only your explicit activation changes policy.</p></div>
+      {active && <span className="status-badge status-applied">Version {active.version}</span>}
+    </div>
+    {error && <div className="inline-error">{error}</div>}
+    {notice && <div className="inline-notice">{notice}</div>}
+    <div className="config-columns">
+      <div className="config-stack">
+        <section className="config-card">
+          <div className="config-card-heading"><div><span className="eyebrow">Active policy</span><h2>{active?.name ?? "Loading…"}</h2></div><span>{active?.rules.filter((rule) => rule.enabled).length ?? 0} enabled rules</span></div>
+          {active && <div className="config-meta"><span>Fallback: {humanize(active.defaultOutcome)}</span><span>Activated by {active.createdBy.displayName}</span><span>{formatDate(active.createdAt)}</span><span>Source automation guarded off</span></div>}
+          <textarea className="config-editor" aria-label="Policy configuration JSON" spellCheck={false} value={editor} onChange={(event) => setEditor(event.target.value)} disabled={!canManage || busy} />
+          <label className="config-label">Change summary<input value={changeSummary} onChange={(event) => setChangeSummary(event.target.value)} maxLength={500} placeholder="Why this policy version should replace the current one" disabled={!canManage || busy} /></label>
+          <div className="config-actions"><button className="decision-button primary" disabled={!canManage || busy || !changeSummary.trim() || !active} onClick={() => void activateDirect()}>{busy ? "Working…" : "Validate and activate"}</button><button className="ghost-button" disabled={busy || !active} onClick={() => active && setEditor(JSON.stringify(policyDraft(active), null, 2))}>Reset editor</button></div>
+          {!canManage && <p className="permission-note">You can inspect policy, but `steering.manage` is required to change it or use the authoring agent.</p>}
+        </section>
+
+        <section className="config-card compact">
+          <span className="eyebrow">Version history</span>
+          <div className="version-list">{history.map((item) => <div key={item.version}><strong>v{item.version} · {item.name}</strong><span>{item.changeSummary}</span><small>{item.createdBy.displayName} · {formatDate(item.createdAt)}</small></div>)}</div>
+        </section>
+      </div>
+
+      <section className="config-card agent-card">
+        <div className="config-card-heading"><div><span className="eyebrow">Config author</span><h2>Discuss with agent</h2></div><span className={`mode-pill ${config.configAgentMode === "fake" ? "offline" : ""}`}>{config.configAgentMode === "fake" ? "Offline test agent" : config.configAgentModel ?? "OpenRouter"}</span></div>
+        <p className="agent-boundary">The agent receives only this Steering policy and this conversation. It has no sibling-product tools or authority to activate changes.</p>
+        <div className="agent-messages">
+          {agentSession?.messages.map((message, index) => <div className={`agent-message ${message.role}`} key={`${message.createdAt}-${index}`}><span>{message.role === "user" ? "You" : "Config agent"}</span><p>{message.content}</p></div>)}
+          {!agentSession?.messages.length && <div className="agent-empty"><strong>Start with intent, not syntax.</strong><p>Ask what the current policy does, explore a tradeoff, or request a reviewable configuration proposal.</p></div>}
+        </div>
+        {agentSession?.error && <div className="inline-error">{agentSession.error}</div>}
+        <div className="agent-compose"><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={4000} placeholder="For example: explain which actions can run automatically, then propose a safer default…" disabled={!canManage || busy || agentSession?.status === "applied" || agentSession?.status === "error"} /><button className="decision-button primary" disabled={!canManage || busy || !prompt.trim() || agentSession?.status === "applied" || agentSession?.status === "error"} onClick={() => void sendAgentPrompt()}>{busy ? "Thinking…" : agentSession ? "Send" : "Start discussion"}</button></div>
+
+        {agentSession?.proposedConfig && <div className="agent-proposal">
+          <div><span className="eyebrow">Reviewable proposal</span><h3>{agentSession.proposedConfig.name}</h3><p>{agentSession.proposalSummary}</p></div>
+          <pre>{JSON.stringify(agentSession.proposedConfig, null, 2)}</pre>
+          <button className="decision-button primary" disabled={!canManage || busy || agentSession.status !== "active"} onClick={() => void activateProposal()}>{agentSession.status === "applied" ? "Activated" : "Activate exact proposal"}</button>
+        </div>}
+        {agentSession && <button className="ghost-button new-agent-session" disabled={busy} onClick={() => { setAgentSession(undefined); setPrompt(""); }}>Start new discussion</button>}
+      </section>
+    </div>
+  </section>;
+}
+
+function policyDraft(config: PolicyConfig): PolicyDraft {
+  return { schemaVersion: config.schemaVersion, name: config.name, defaultOutcome: config.defaultOutcome, defaultExplanation: config.defaultExplanation, rules: config.rules };
 }
 
 function WorkflowEventDetail({ item }: { item: WorkflowEvent }) {
@@ -212,7 +330,12 @@ function WorkflowEventDetail({ item }: { item: WorkflowEvent }) {
   </article>;
 }
 
-function CaseDetail({ item, canDecide, onMutation }: { item: SteeringCase; canDecide: boolean; onMutation: (next: SteeringCase) => Promise<void> }) {
+function CaseDetail({ item, canDecide, advisor, onMutation }: {
+  item: SteeringCase;
+  canDecide: boolean;
+  advisor?: { mode: "openrouter" | "fake"; model?: string };
+  onMutation: (next: SteeringCase) => Promise<void>;
+}) {
   const [rationale, setRationale] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -243,6 +366,20 @@ function CaseDetail({ item, canDecide, onMutation }: { item: SteeringCase; canDe
     setError(undefined);
     try {
       await onMutation(await api.message(item.id, message.trim()));
+      setMessage("");
+    } catch (nextError) {
+      setError(errorMessage(nextError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const askAdvisor = async () => {
+    if (!message.trim()) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await onMutation(await api.askAdvisor(item.id, message.trim()));
       setMessage("");
     } catch (nextError) {
       setError(errorMessage(nextError));
@@ -294,21 +431,21 @@ function CaseDetail({ item, canDecide, onMutation }: { item: SteeringCase; canDe
         </div>
       </DetailSection>
 
-      {!!item.messages?.length && <DetailSection title="Discussion">
-        <div className="message-list">
-          {item.messages.map((entry) => <div className="message" key={entry.id}><div><strong>{entry.author.displayName}</strong><span>{relativeTime(entry.createdAt)}</span></div><p>{entry.body}</p></div>)}
-        </div>
-      </DetailSection>}
+      <DetailSection title="Discussion">
+        {!!item.messages?.length ? <div className="message-list">
+          {item.messages.map((entry) => <div className={`message ${entry.author.id === "service:acme-steering:advisor" ? "advisor" : ""}`} key={entry.id}><div><strong>{entry.author.displayName}</strong><span>{entry.author.id === "service:acme-steering:advisor" ? "Generated advice" : relativeTime(entry.createdAt)}</span></div><p>{entry.body}</p></div>)}
+        </div> : <p className="discussion-empty">No discussion yet.</p>}
+        {canDecide && <div className="case-discussion-compose">
+          <textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask the advisor or add human context without authorizing…" maxLength={2000} disabled={busy} />
+          <div><span>{advisor ? `Advisor: ${advisor.mode === "fake" ? "offline test mode" : advisor.model ?? "OpenRouter"}` : "Advisor unavailable"}</span><button className="ghost-button" disabled={busy || !message.trim()} onClick={() => void sendMessage()}>Add note</button><button className="decision-button primary" disabled={busy || !message.trim() || !advisor} onClick={() => void askAdvisor()}>{busy ? "Working…" : "Ask advisor"}</button></div>
+        </div>}
+      </DetailSection>
 
       {active && canDecide && <div className="decision-box">
         <label htmlFor="rationale">Decision note <span>Required for rejection, revision, and escalation</span></label>
         <textarea id="rationale" value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="Add reasoning, conditions, or revision guidance…" maxLength={2000} />
         <div className="decision-actions">
           {item.choices.map((choice) => <button key={choice.id} disabled={busy} className={`decision-button ${choice.tone ?? "neutral"}`} title={choice.consequence} onClick={() => void resolve(choice.id)}>{choice.label}</button>)}
-        </div>
-        <div className="discussion-compose">
-          <input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask or add context without authorizing…" maxLength={2000} onKeyDown={(event) => { if (event.key === "Enter") void sendMessage(); }} />
-          <button className="ghost-button" disabled={busy || !message.trim()} onClick={() => void sendMessage()}>Add note</button>
         </div>
       </div>}
 
@@ -332,7 +469,7 @@ function SignIn({ error, onSignedIn }: { error?: string; onSignedIn: () => Promi
     catch (nextError) { setLocalError(errorMessage(nextError)); }
     finally { setBusy(false); }
   }}>
-    <div className="brand-mark auth-logo">AS</div><span className="eyebrow auth-eyebrow">Acme Identity</span><h1>Sign in to Acme Steering</h1><p>The first pass restricts the Steering inbox to an Identity principal with the required permissions.</p>
+    <div className="brand-mark auth-logo">AS</div><span className="eyebrow auth-eyebrow">Acme Identity</span><h1>Sign in to Acme Steering</h1><p>The Steering inbox requires an Identity principal with the appropriate permissions.</p>
     <label>Username<input autoComplete="username" autoFocus required value={username} onChange={(event) => setUsername(event.target.value)} /></label>
     <label>Password<input autoComplete="current-password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
     {(localError || error) && <div className="inline-error">{localError ?? error}</div>}
@@ -347,7 +484,7 @@ function AccessRequired({ session, onSessionChange }: { session: Session; onSess
     <div className="brand-mark auth-logo">AS</div>
     <span className="eyebrow auth-eyebrow">Access restricted</span>
     <h1>Administrator access required</h1>
-    <p><strong>{session.principal.displayName}</strong> is signed in as @{session.principal.username}, but this first pass only admits principals with Steering access.</p>
+    <p><strong>{session.principal.displayName}</strong> is signed in as @{session.principal.username}, but this account does not currently have Steering access.</p>
     <div className="account-context restricted-account">
       <span className="account-status connected" />
       <div><strong>Acme Identity</strong><span>{session.principal.roles.join(", ") || session.principal.kind}</span></div>

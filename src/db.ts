@@ -82,6 +82,26 @@ function migrate(db: Database.Database): void {
       FOREIGN KEY (case_id) REFERENCES steering_cases(id) ON DELETE SET NULL
     );
 
+    CREATE TABLE IF NOT EXISTS policy_config_versions (
+      version INTEGER PRIMARY KEY AUTOINCREMENT,
+      config_json TEXT NOT NULL,
+      created_by_json TEXT NOT NULL,
+      change_summary TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS config_agent_sessions (
+      id TEXT PRIMARY KEY,
+      status TEXT NOT NULL,
+      messages_json TEXT NOT NULL,
+      proposed_config_json TEXT,
+      proposal_summary TEXT,
+      based_on_version INTEGER NOT NULL,
+      error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_cases_status_updated
       ON steering_cases(status, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_cases_policy_updated
@@ -92,6 +112,8 @@ function migrate(db: Database.Database): void {
       ON workflow_events(received_at DESC, id DESC);
     CREATE INDEX IF NOT EXISTS idx_workflow_events_resource
       ON workflow_events(source_product, source_resource_type, source_resource_id, occurred_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_config_agent_updated
+      ON config_agent_sessions(updated_at DESC);
   `);
 
   const caseColumns = new Set((db.prepare("PRAGMA table_info(steering_cases)").all() as Array<{ name: string }>)

@@ -21,6 +21,29 @@ import {
 import type { CaseView, Resolution, WorkflowNotification } from "./types.js";
 import { webAssets, webIndex } from "./webAssets.js";
 import { createActionDispatcher, type ActionDispatcher } from "./actions.js";
+import {
+  createDefaultConfigAgent,
+  resolveConfigAgentMode,
+  resolveConfigAgentModel,
+  type ConfigAgent,
+} from "./configAgent.js";
+import {
+  ConfigAgentService,
+  ConfigAgentSessionConflictError,
+  ConfigAgentSessionNotFoundError,
+} from "./configAgentService.js";
+import {
+  PolicyConfigConflictError,
+  PolicyConfigStore,
+  PolicyConfigValidationError,
+} from "./configStore.js";
+import {
+  caseAdvisorActor,
+  createDefaultCaseAdvisor,
+  resolveCaseAdvisorMode,
+  resolveCaseAdvisorModel,
+  type CaseAdvisor,
+} from "./caseAdvisor.js";
 
 const views = new Set<CaseView>(["attention", "automated", "history"]);
 const resolutions = new Set<Resolution>([
@@ -37,6 +60,8 @@ export interface AppContext {
   authAdapter?: SteeringAuthAdapter;
   seed?: boolean;
   actionDispatcher?: ActionDispatcher;
+  createConfigAgent?: () => ConfigAgent;
+  createCaseAdvisor?: () => CaseAdvisor;
 }
 
 export async function createApp(context: AppContext): Promise<Express> {
@@ -44,6 +69,9 @@ export async function createApp(context: AppContext): Promise<Express> {
   const store = new SteeringStore(context.db);
   const auth = context.authAdapter ?? createAuthAdapterFromEnv();
   const actionDispatcher = context.actionDispatcher ?? createActionDispatcher();
+  const policyConfigs = new PolicyConfigStore(context.db);
+  const configAgent = new ConfigAgentService(context.db, context.createConfigAgent ?? createDefaultConfigAgent);
+  const createCaseAdvisor = context.createCaseAdvisor ?? createDefaultCaseAdvisor;
   if (context.seed !== false) seedFixtures(store);
 
   app.use(express.json({ limit: "64kb" }));
@@ -66,12 +94,92 @@ export async function createApp(context: AppContext): Promise<Express> {
     product: "Acme Steering",
     authMode: auth.mode,
     provider: auth.provider,
-    advisorEnabled: false,
+    advisorEnabled: true,
+    advisorMode: resolveCaseAdvisorMode(),
+    advisorModel: resolveCaseAdvisorMode() === "openrouter" ? resolveCaseAdvisorModel() : undefined,
+    configAgentMode: resolveConfigAgentMode(),
+    configAgentModel: resolveConfigAgentMode() === "openrouter" ? resolveConfigAgentModel() : undefined,
     fixtureMode: true,
   }));
   sessionRoutes(app, auth);
 
   const authenticate = authenticateRequests(auth);
+  app.get(
+    "/api/policy-config",
+    authenticate,
+    requirePermission("steering.read"),
+    (_req, res) => res.json({ active: policyConfigs.active(), history: policyConfigs.history() }),
+  );
+  app.post(
+    "/api/policy-config/activate",
+    authenticate,
+    requirePermission("steering.manage"),
+    (req, res) => {
+      try {
+        res.status(201).json(policyConfigs.activate({
+          draft: req.body?.config,
+          expectedVersion: Number(req.body?.expectedVersion),
+          actor: principalFrom(res)!,
+          changeSummary: text(req.body?.changeSummary) ?? "",
+        }));
+      } catch (error) {
+        sendConfigError(res, error);
+      }
+    },
+  );
+  app.post(
+    "/api/config-agent/sessions",
+    authenticate,
+    requirePermission("steering.manage"),
+    async (req, res) => {
+      const prompt = text(req.body?.prompt);
+      if (!prompt) return res.status(400).json({ error: "prompt is required" });
+      if (prompt.length > 4_000) return res.status(400).json({ error: "prompt must be 4000 characters or fewer" });
+      res.status(201).json(await configAgent.start(prompt));
+    },
+  );
+  app.get(
+    "/api/config-agent/sessions/:id",
+    authenticate,
+    requirePermission("steering.manage"),
+    (req, res) => {
+      try { res.json(configAgent.get(String(req.params.id))); }
+      catch (error) { sendConfigError(res, error); }
+    },
+  );
+  app.post(
+    "/api/config-agent/sessions/:id/messages",
+    authenticate,
+    requirePermission("steering.manage"),
+    async (req, res) => {
+      const prompt = text(req.body?.prompt);
+      if (!prompt) return res.status(400).json({ error: "prompt is required" });
+      if (prompt.length > 4_000) return res.status(400).json({ error: "prompt must be 4000 characters or fewer" });
+      try { res.json(await configAgent.turn(String(req.params.id), prompt)); }
+      catch (error) { sendConfigError(res, error); }
+    },
+  );
+  app.post(
+    "/api/config-agent/sessions/:id/activate",
+    authenticate,
+    requirePermission("steering.manage"),
+    (req, res) => {
+      try {
+        const session = configAgent.get(String(req.params.id));
+        if (!session.proposedConfig) throw new ConfigAgentSessionConflictError("This session has no proposed configuration");
+        const active = policyConfigs.activate({
+          draft: session.proposedConfig,
+          expectedVersion: session.basedOnVersion,
+          actor: principalFrom(res)!,
+          changeSummary: session.proposalSummary ?? "Agent-assisted policy update.",
+        });
+        configAgent.markApplied(session.id);
+        res.status(201).json({ active, session: configAgent.get(session.id) });
+      } catch (error) {
+        sendConfigError(res, error);
+      }
+    },
+  );
   app.get(
     "/api/events",
     authenticate,
@@ -130,6 +238,31 @@ export async function createApp(context: AppContext): Promise<Express> {
       if (body.length > 2_000) return res.status(400).json({ error: "body must be 2000 characters or fewer" });
       try {
         res.status(201).json(store.addMessage(String(req.params.id), body, principalFrom(res)!));
+      } catch (error) {
+        sendStoreError(res, error);
+      }
+    },
+  );
+  app.post(
+    "/api/cases/:id/advisor",
+    authenticate,
+    requirePermission("steering.decide"),
+    async (req, res) => {
+      const prompt = text(req.body?.prompt);
+      if (!prompt) return res.status(400).json({ error: "prompt is required" });
+      if (prompt.length > 2_000) return res.status(400).json({ error: "prompt must be 2000 characters or fewer" });
+      try {
+        const caseId = String(req.params.id);
+        const before = store.getCase(caseId);
+        const turn = await createCaseAdvisor().complete(prompt, before);
+        const latest = store.getCase(caseId);
+        if (latest.sourceRevision !== before.sourceRevision || latest.status !== before.status) {
+          return res.status(409).json({ error: "The case changed while the advisor was responding; review the latest case and ask again." });
+        }
+        res.status(201).json(store.addMessages(caseId, [
+          { body: prompt, author: principalFrom(res)! },
+          { body: turn.message, author: caseAdvisorActor },
+        ]));
       } catch (error) {
         sendStoreError(res, error);
       }
@@ -195,6 +328,18 @@ export async function createApp(context: AppContext): Promise<Express> {
   app.use(webAssets());
   app.get("/{*path}", webIndex());
   return app;
+}
+
+function sendConfigError(res: express.Response, error: unknown): void {
+  if (error instanceof PolicyConfigValidationError) {
+    res.status(400).json({ error: error.message, errors: error.errors });
+  } else if (error instanceof PolicyConfigConflictError || error instanceof ConfigAgentSessionConflictError) {
+    res.status(409).json({ error: error.message });
+  } else if (error instanceof ConfigAgentSessionNotFoundError) {
+    res.status(404).json({ error: error.message });
+  } else {
+    res.status(500).json({ error: error instanceof Error ? error.message : "Unexpected config error" });
+  }
 }
 
 function sendStoreError(res: express.Response, error: unknown): void {
