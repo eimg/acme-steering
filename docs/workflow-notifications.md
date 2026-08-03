@@ -2,7 +2,7 @@
 
 The first adapter contract is `acme.steering.notification.v1`. Prelude, Helix, Acme Issues, and Acme Projects may publish durable lifecycle transitions to `POST /api/notifications`. Identity, Primer, Observability, and Todo do not publish workflow events in this slice.
 
-Prelude's Connections screen validates its delivery credential without creating an event by calling `POST /api/notifications/check` with its product name. Other sources may use the same public probe in future configuration surfaces. The endpoint applies the same product-specific notification permission used for ingestion and returns no secret material.
+Source **Connections** screens (Prelude, Helix, Acme Issues, and Acme Projects) validate delivery credentials without creating an event by calling `POST /api/notifications/check` with their product name. The endpoint applies the same product-specific notification permission used for ingestion and returns no secret material.
 
 An adapter is optional and disabled when `ACME_STEERING_URL` is empty. It sends only after the source mutation succeeds, uses a two-second timeout, and never makes source workflow success depend on Steering availability. In local-auth mode it uses a product-bound `steering.notify.<product>` service token from `ACME_STEERING_TOKEN`; that token is attached only when the destination origin is listed in `ACME_TRUSTED_STEERING_ORIGINS`. Steering checks that the credential's product permission matches the payload's declared source.
 
