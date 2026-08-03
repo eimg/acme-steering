@@ -197,6 +197,21 @@ export async function createApp(context: AppContext): Promise<Express> {
     (req, res) => res.json({ items: store.listWorkflowEvents(Number(req.query.limit ?? 100)) }),
   );
   app.post(
+    "/api/notifications/check",
+    authenticate,
+    (req, res) => {
+      const product = String(req.body?.product ?? "");
+      if (!isNotificationProduct(product)) {
+        return res.status(400).json({ error: "product must identify a supported workflow source" });
+      }
+      const permission = notificationPermission(product);
+      if (!hasActorPermission(principalFrom(res)!, permission)) {
+        return res.status(403).json({ error: `Missing permission: ${permission}` });
+      }
+      return res.json({ ok: true, product, permission });
+    },
+  );
+  app.post(
     "/api/notifications",
     authenticate,
     async (req, res) => {
@@ -422,6 +437,10 @@ function notificationPermission(product: WorkflowNotification["source"]["product
   return product === "prelude" ? "steering.notify.prelude"
     : product === "helix" ? "steering.notify.helix"
       : product === "acme-issues" ? "steering.notify.issues" : "steering.notify.projects";
+}
+
+function isNotificationProduct(value: string): value is WorkflowNotification["source"]["product"] {
+  return ["prelude", "helix", "acme-issues", "acme-projects"].includes(value);
 }
 
 function notificationContract(product: WorkflowNotification["source"]["product"]): { actionKey: string; resourceType: string } {

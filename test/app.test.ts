@@ -122,6 +122,8 @@ describe("steering HTTP API", () => {
     });
     const db = openDatabase(":memory:");
     const app = await createApp({ db, authAdapter: adapter, seed: false });
+    await request(app).post("/api/notifications/check").send({ product: "prelude" }).expect(200);
+    await request(app).post("/api/notifications/check").send({ product: "acme-issues" }).expect(403);
     const payload = {
       schemaVersion: "acme.steering.notification.v1",
       id: "prelude:1:accepted:1",
