@@ -119,6 +119,7 @@ describe("steering store", () => {
     ["defer", "deferred"],
     ["request_revision", "revision_requested"],
     ["escalate", "escalated"],
+    ["cancel", "withdrawn"],
   ] as const) {
     it(`does not reopen an unchanged proposal after ${resolution}`, () => {
       const db = openDatabase(":memory:");

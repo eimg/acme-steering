@@ -209,6 +209,40 @@ describe("steering HTTP API", () => {
     assert.equal(resolved.body.decisionDeliveryStatus, "recorded");
     db.close();
   });
+
+  it("retries unavailable decision delivery with the original decision identity", async () => {
+    const db = openDatabase(":memory:");
+    const deliveredIds: string[] = [];
+    let attempts = 0;
+    const dispatcher: ActionDispatcher = {
+      async notifyDecision(item, decisionId) {
+        deliveredIds.push(decisionId);
+        attempts += 1;
+        return {
+          schemaVersion: "acme.steering.decision-receipt.v1", decisionId,
+          status: attempts === 1 ? "unavailable" : "recorded", sourceRevision: item.sourceRevision,
+          summary: attempts === 1 ? "The source was offline." : "The source recorded the decision.",
+        };
+      },
+      async invoke() { throw new Error("A non-approval retry must not invoke an action."); },
+    };
+    const app = await createApp({ db, authAdapter: createStandaloneAuthAdapter(), seed: false, actionDispatcher: dispatcher });
+    await request(app).post("/api/notifications").send({
+      schemaVersion: "acme.steering.notification.v1", id: "issues:6:eligible:1",
+      source: { product: "acme-issues", resourceType: "issue", resourceId: "6", revision: "1" },
+      event: { type: "issue.trigger_eligible", occurredAt: "2026-08-03T00:00:00.000Z", summary: "Issue eligible" },
+      steering: { caseKey: "issue:6:trigger", state: "open", action: "issues.trigger_implementation" },
+    }).expect(202);
+    const first = await request(app).post("/api/cases/acme-issues%3Aissue%3A6%3Atrigger/resolve")
+      .send({ resolution: "defer", sourceRevision: "1" }).expect(200);
+    assert.equal(first.body.decisionDeliveryStatus, "unavailable");
+    const retried = await request(app).post("/api/cases/acme-issues%3Aissue%3A6%3Atrigger/redeliver-decision").expect(200);
+    assert.equal(retried.body.decisionDeliveryStatus, "recorded");
+    assert.equal(deliveredIds.length, 2);
+    assert.equal(deliveredIds[0], deliveredIds[1]);
+    await request(app).post("/api/cases/acme-issues%3Aissue%3A6%3Atrigger/redeliver-decision").expect(409);
+    db.close();
+  });
 });
 
 function identityResponse({ permissions }: { permissions: string[] }): Response {

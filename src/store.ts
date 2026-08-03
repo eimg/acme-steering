@@ -358,7 +358,7 @@ export class SteeringStore {
       this.insertSystemMessage(caseId, `${systemNote} (older source event recorded; case state unchanged)`, now);
       return this.getCase(caseId);
     }
-    const settledHumanStatuses: CaseStatus[] = ["rejected", "deferred", "revision_requested", "escalated"];
+    const settledHumanStatuses: CaseStatus[] = ["rejected", "deferred", "revision_requested", "escalated", "withdrawn"];
     if (currentRow && settledHumanStatuses.includes(currentRow.status)
       && currentRow.source_revision === notification.source.revision && steering.state === "open") {
       this.insertSystemMessage(caseId, `${systemNote} (the unchanged proposal remains ${currentRow.status})`, now);

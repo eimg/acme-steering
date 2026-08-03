@@ -171,6 +171,26 @@ export async function createApp(context: AppContext): Promise<Express> {
       }
     },
   );
+  app.post(
+    "/api/cases/:id/redeliver-decision",
+    authenticate,
+    requirePermission("steering.decide"),
+    async (req, res) => {
+      try {
+        const item = store.getCase(String(req.params.id));
+        if (item.facts.sourceNotification !== true || !item.decisionId || !item.resolution) {
+          return res.status(409).json({ error: "This case has no source-backed decision to deliver" });
+        }
+        if (item.decisionDeliveryStatus !== "unavailable") {
+          return res.status(409).json({ error: `Decision delivery is ${item.decisionDeliveryStatus ?? "not pending"}; only unavailable delivery can be retried` });
+        }
+        const receipt = await actionDispatcher.notifyDecision(item, item.decisionId);
+        res.json(store.recordDecisionReceipt(item.id, receipt));
+      } catch (error) {
+        sendStoreError(res, error);
+      }
+    },
+  );
 
   app.use(webAssets());
   app.get("/{*path}", webIndex());

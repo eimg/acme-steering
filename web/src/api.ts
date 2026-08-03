@@ -135,4 +135,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ resolution, rationale, sourceRevision }),
     }),
+  redeliverDecision: (id: string) => json<SteeringCase>(`/api/cases/${encodeURIComponent(id)}/redeliver-decision`, {
+    method: "POST",
+  }),
 };

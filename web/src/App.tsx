@@ -251,6 +251,18 @@ function CaseDetail({ item, canDecide, onMutation }: { item: SteeringCase; canDe
     }
   };
 
+  const redeliverDecision = async () => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await onMutation(await api.redeliverDecision(item.id));
+    } catch (nextError) {
+      setError(errorMessage(nextError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <article className="case-detail">
       <div className="detail-heading">
@@ -301,7 +313,7 @@ function CaseDetail({ item, canDecide, onMutation }: { item: SteeringCase; canDe
       </div>}
 
       {item.applicationSummary && <div className="application-result"><span>Application outcome</span><strong>{item.applicationSummary}</strong>{item.resolvedBy && <small>{item.resolvedBy.displayName} · {item.resolvedAt ? formatDate(item.resolvedAt) : ""}</small>}</div>}
-      {item.decisionDeliverySummary && <div className="application-result"><span>Source decision delivery · {humanize(item.decisionDeliveryStatus ?? "unknown")}</span><strong>{item.decisionDeliverySummary}</strong>{item.decisionDeliveredAt && <small>{formatDate(item.decisionDeliveredAt)}</small>}</div>}
+      {item.decisionDeliverySummary && <div className="application-result"><span>Source decision delivery · {humanize(item.decisionDeliveryStatus ?? "unknown")}</span><strong>{item.decisionDeliverySummary}</strong>{item.decisionDeliveredAt && <small>{formatDate(item.decisionDeliveredAt)}</small>}{canDecide && item.decisionDeliveryStatus === "unavailable" && <button className="ghost-button" disabled={busy} onClick={() => void redeliverDecision()}>{busy ? "Retrying…" : "Retry delivery"}</button>}</div>}
       {error && <div className="inline-error">{error}</div>}
     </article>
   );
