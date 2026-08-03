@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A steering case is the durable record connecting a proposed product action, policy evaluation, human interaction, explicit resolution, and the source product's eventual application outcome.
+A steering case is the durable record connecting a proposed product action, policy evaluation, optional human interaction, explicit human- or service-attributed resolution, and the source product's eventual application outcome.
 
 It is not an email, chat thread, generic task, or copy of the source workflow.
 
@@ -49,7 +49,7 @@ It records the actor, rationale, scope, conditions, and the source revision to w
 
 ### 4. Source acknowledgement and application
 
-For a source-backed case, Steering first sends the explicit disposition to the source's durable decision ledger. The acknowledgement proves the workflow owner received the human input; it does not prove any domain state changed and does not prescribe the product's next transition.
+For a source-backed case, Steering first sends the explicit disposition to the source's durable decision ledger. The acknowledgement proves the workflow owner recorded the human- or service-attributed input; it does not prove any domain state changed and does not prescribe the product's next transition.
 
 The source product revalidates authorization and current state, then reports whether the resolution was:
 

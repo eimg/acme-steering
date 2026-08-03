@@ -59,7 +59,7 @@ It may:
 - explain why policy paused;
 - compare options and consequences;
 - identify missing or conflicting evidence;
-- use allowlisted Observability facts to explain cross-product state;
+- later use allowlisted Observability facts through an explicitly authorized adapter to explain cross-product state;
 - draft a rationale for the human to review.
 
 It may not approve, change policy, bypass authorization, inherit opaque execution-agent context, or present generated claims as source evidence. Steering remains useful without a model provider through its deterministic offline advisor.

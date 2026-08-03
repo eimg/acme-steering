@@ -48,7 +48,7 @@ Exit: every journey in `PROJECT_SPEC.md` section 5 is demonstrated.
 - Duplicate delivery is idempotent and later source actions resolve or supersede stale cases.
 - Administrator approval invokes the first allowlisted product actions and records authoritative receipts; asynchronous acceptance still waits for a source event.
 - The accepted, reversible Prelude export is automatically authorized under the Steering service principal; other source actions remain human-authorized.
-- Every source-backed human disposition is delivered through `acme.steering.decision.v1` and durably acknowledged by the workflow owner without generic state mutation.
+- Every completed source-backed disposition is delivered through `acme.steering.decision.v1` and durably acknowledged by the workflow owner without generic state mutation; automatic approval is service-attributed.
 - The Projects → Issues → Helix boundary remains unchanged.
 
 Exit: Steering can be stopped and the original manual journey still works unchanged.
@@ -65,16 +65,19 @@ Exit: Identity failure in shared mode fails closed without affecting standalone 
 
 The mechanical edge credentials, product reauthorization, and one narrow risk-based automatic journey are implemented. Ownership and delegation remain deferred.
 
-## Phase 4 — cross-product coverage
+## Phase 4 — broader cross-product behavior (mechanical contracts implemented)
 
-Add adapters incrementally for proven checkpoints such as:
+The first mechanical actions are implemented for:
 
 - Prelude accepted export packaging and Helix catalog pickup;
 - Helix ambiguity, continuation, or review-retry decisions;
 - Issues implementation triggering and review/merge boundaries;
 - Projects readiness or revision where public state supports it.
 
-Each adapter must preserve the source product's ownership and direct manual path.
+Each adapter preserves the source product's ownership and direct manual path.
+Only Prelude export is automatic in the shipped policy; Projects submission,
+Issues triggering, and Helix recovery remain human-authorized. Richer checkpoint
+semantics, background retries, and organization-specific policy remain later work.
 
 ## Phase 5 — optional advisor (case-only slice implemented)
 

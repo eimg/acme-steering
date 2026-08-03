@@ -40,7 +40,7 @@ These decisions form the accepted inception baseline. Future implementation may 
 ## Deliberately deferred
 
 - Rich form-based policy editing, historical simulation beyond current cases, semantic diffs, and organization-specific policy packs.
-- Ownership semantics beyond the current administrator-only human mode. Source publishing uses product-bound `steering.notify.<product>` permissions; policy management and automation permissions remain future seams.
+- Ownership semantics beyond the current administrator-only human mode. Source publishing uses product-bound `steering.notify.<product>` permissions; policy management uses `steering.manage`, while richer ownership and delegation permissions remain future seams.
 - Broader risk classifiers and automatic action keys beyond the accepted Prelude export reference journey.
 - External email, Slack, Teams, Telegram, desktop, or mobile notification adapters.
 - Direct advisor adapters to source products or authorized Observability reads.

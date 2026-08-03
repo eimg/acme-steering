@@ -46,6 +46,7 @@ Treat this as an executable reference architecture, not a universal governance p
 - Steering derives bounded reference risk from the action contract and structured facts; never trust sibling-provided risk labels as authority. Unknown actions remain `unassessed`, and ownership routing remains a distinct later layer.
 - Current human access is administrator-only. Do not infer or invent workflow ownership; preserve the source product/resource seam for a later explicit ownership model.
 - Notification delivery is optional, post-transaction, bounded, idempotent, and non-blocking. Source products remain useful when Steering is absent.
+- `POST /api/notifications/check` validates a source's product-bound notification permission without ingesting a fake event. Prelude exposes this through its Connections screen; credentials remain server-side.
 - An unavailable decision delivery may be retried explicitly with the same decision ID. Do not invent blind action retries or represent a retry attempt as an applied workflow effect.
 - Policy rules are deterministic, ordered, and first-match-wins. Existing case evaluations remain historical snapshots when a later config version is activated.
 - Advisor questions and generated answers are discussion messages only. They must never set a resolution, invoke an action, or be presented as source evidence.

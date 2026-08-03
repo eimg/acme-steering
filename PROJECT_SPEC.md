@@ -100,7 +100,7 @@ The first runnable slice should prove the mechanism with deterministic local fix
 6. Show `Automated` and `History` without any sibling product running.
 7. Restart and retain the complete case and decision history.
 
-The first real adapter should be selected only after verifying the owning product's current public API. A strong candidate is the existing Acme Projects → Acme Issues implementation-start checkpoint because it demonstrates manual fallback, human authorization, policy automation, and reconciliation without changing the Projects → Issues → Helix boundary.
+The first real adapter is now the accepted Prelude export checkpoint. It demonstrates manual fallback, source revalidation, product-owned action receipts, reconciliation, and the first bounded policy-authorized automatic journey without making Prelude trigger Helix. Projects submission, Issues triggering, and Helix recovery are also implemented as narrow actions but remain human-authorized in the shipped reference policy.
 
 ### Implemented in the current slice
 
@@ -117,7 +117,7 @@ The first real adapter should be selected only after verifying the owning produc
 - One verification command covering typechecking, policy, persistence, HTTP/auth behavior, and production build.
 - Optional `acme.steering.notification.v1` ingestion from Prelude, Helix, Issues, and Projects with an idempotent Activity journal and source-event reconciliation.
 - Source-backed approval waits for source confirmation rather than claiming a domain effect.
-- Every source-backed human disposition is durably returned to the workflow owner; receipt records steering input but leaves the next domain transition product-owned.
+- Every completed source-backed disposition is durably returned to the workflow owner; automatic approval is service-attributed, and receipt records steering input but leaves the next domain transition product-owned.
 - The accepted, reversible Prelude export demonstrates service-principal automation with durable authorization, delivery, invocation, and reconciliation history.
 - Minimal capability-routed escalation records a required permission, optional deadline, and remain-paused fallback.
 
