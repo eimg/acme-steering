@@ -33,6 +33,7 @@ function migrate(db: Database.Database): void {
       proposed_action TEXT NOT NULL,
       recommendation TEXT NOT NULL,
       risk TEXT NOT NULL,
+      risk_assessment_json TEXT,
       reversible INTEGER NOT NULL CHECK(reversible IN (0, 1)),
       evidence_json TEXT NOT NULL,
       choices_json TEXT NOT NULL,
@@ -102,6 +103,34 @@ function migrate(db: Database.Database): void {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS action_attempts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      case_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      status TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      decision_id TEXT,
+      actor_json TEXT NOT NULL,
+      policy_id TEXT,
+      policy_version TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (case_id) REFERENCES steering_cases(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS case_escalations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      case_id TEXT NOT NULL,
+      required_permission TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      deadline_at TEXT,
+      fallback TEXT NOT NULL,
+      status TEXT NOT NULL,
+      created_by_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      closed_at TEXT,
+      FOREIGN KEY (case_id) REFERENCES steering_cases(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_cases_status_updated
       ON steering_cases(status, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_cases_policy_updated
@@ -114,6 +143,10 @@ function migrate(db: Database.Database): void {
       ON workflow_events(source_product, source_resource_type, source_resource_id, occurred_at DESC);
     CREATE INDEX IF NOT EXISTS idx_config_agent_updated
       ON config_agent_sessions(updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_action_attempts_case
+      ON action_attempts(case_id, created_at ASC, id ASC);
+    CREATE INDEX IF NOT EXISTS idx_escalations_case
+      ON case_escalations(case_id, created_at DESC, id DESC);
   `);
 
   const caseColumns = new Set((db.prepare("PRAGMA table_info(steering_cases)").all() as Array<{ name: string }>)
@@ -122,4 +155,5 @@ function migrate(db: Database.Database): void {
   if (!caseColumns.has("decision_delivery_status")) db.exec("ALTER TABLE steering_cases ADD COLUMN decision_delivery_status TEXT");
   if (!caseColumns.has("decision_delivery_summary")) db.exec("ALTER TABLE steering_cases ADD COLUMN decision_delivery_summary TEXT");
   if (!caseColumns.has("decision_delivered_at")) db.exec("ALTER TABLE steering_cases ADD COLUMN decision_delivered_at TEXT");
+  if (!caseColumns.has("risk_assessment_json")) db.exec("ALTER TABLE steering_cases ADD COLUMN risk_assessment_json TEXT");
 }

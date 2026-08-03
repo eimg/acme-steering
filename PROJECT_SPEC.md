@@ -109,6 +109,8 @@ The first real adapter should be selected only after verifying the owning produc
 - Explicit structured decisions kept separate from case discussion.
 - A versioned, deterministic policy evaluator with automatic, human-required, denied, deferred, and escalated classifications.
 - Immutable declarative policy versions, direct expert editing, and a config-only authoring agent whose proposals require explicit human activation.
+- Read-only policy preview against current cases before activation.
+- Steering-owned bounded risk classification; unknown actions remain explicitly unassessed.
 - A case-bound advisor in every durable discussion, with offline/live adapters and no resolution or workflow authority.
 - Fixture application acknowledgement, rejection suppression, stale-revision protection, and human/service-principal provenance.
 - Standalone `off` authentication and replaceable Acme Identity `local` authentication with fail-closed behavior.
@@ -116,14 +118,16 @@ The first real adapter should be selected only after verifying the owning produc
 - Optional `acme.steering.notification.v1` ingestion from Prelude, Helix, Issues, and Projects with an idempotent Activity journal and source-event reconciliation.
 - Source-backed approval waits for source confirmation rather than claiming a domain effect.
 - Every source-backed human disposition is durably returned to the workflow owner; receipt records steering input but leaves the next domain transition product-owned.
+- The accepted, reversible Prelude export demonstrates service-principal automation with durable authorization, delivery, invocation, and reconciliation history.
+- Minimal capability-routed escalation records a required permission, optional deadline, and remain-paused fallback.
 
 ### Still required to complete the original gate
 
 - Scheduled expiry and declared safe-timeout behavior.
-- A fixture exception journey and fuller application-attempt history.
-- Case ownership, capability-based assignment, delegation, reminders, and escalation routing.
+- Scheduled escalation reminders and timeout processing.
+- Case ownership, capability-based assignment, delegation, and higher-authority escalation routing.
 - Additional product actions beyond the first allowlisted Prelude export, Projects submission, Issues trigger, and Helix recovery commands.
-- Risk assessment, ownership routing, and advisor enrichment from authorized external context remain separate later increments.
+- Broader risk classification, ownership routing, and advisor enrichment from authorized external context remain separate later increments.
 
 ## 6. Non-functional expectations
 

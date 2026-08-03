@@ -23,11 +23,15 @@ These decisions form the accepted inception baseline. Future implementation may 
 | Authorization | Permission strings and source reauthorization; no fixed role names. First pass is administrator-only in practice through wildcard permission |
 | Runtime | TypeScript, Express, React/Vite, and SQLite in one independently runnable service |
 | First policy form | Small declarative, ordered, first-match-wins configuration with immutable versions and a safe manual default |
+| Policy preview | Evaluate a draft against current cases without activation or historical mutation |
 | Policy authoring | Direct JSON editing and agent-assisted proposals converge on one validator; a human with `steering.manage` explicitly activates the exact version |
 | Config agent access | Active Steering policy plus its conversation only; no case authority, sibling tools, or self-activation |
 | Observability | Optional read-only correlation context, never workflow authority |
 | Advisor | Implemented case-bound, read-only, evidence-linked, non-authoritative discussion participant |
 | Initial advisor access | Steering case and its durable discussion only; authorized Observability enrichment remains deferred |
+| Risk ownership | Steering derives risk from structured impact facts; source labels are not authoritative |
+| First automatic path | Accepted, reversible Prelude export under an attributable Steering service principal |
+| Initial escalation | Required permission plus optional deadline and an explicit remain-paused fallback; ownership routing and reminders remain later work |
 | External channels | Deferred; future notification adapters around the local inbox |
 | Decision Intelligence | Separate optional future product, not part of Steering |
 | Default port | `8323` reserved |
@@ -35,9 +39,9 @@ These decisions form the accepted inception baseline. Future implementation may 
 
 ## Deliberately deferred
 
-- Rich form-based policy editing, simulation against historical cases, semantic diffs, and organization-specific policy packs.
+- Rich form-based policy editing, historical simulation beyond current cases, semantic diffs, and organization-specific policy packs.
 - Ownership semantics beyond the current administrator-only human mode. Source publishing uses product-bound `steering.notify.<product>` permissions; policy management and automation permissions remain future seams.
-- Additional action keys beyond the four mechanical reference journeys; risk assessment remains unimplemented and source-backed cases are explicitly unassessed.
+- Broader risk classifiers and automatic action keys beyond the accepted Prelude export reference journey.
 - External email, Slack, Teams, Telegram, desktop, or mobile notification adapters.
 - Direct advisor adapters to source products or authorized Observability reads.
 - Whether policy later merits an independent headless service.

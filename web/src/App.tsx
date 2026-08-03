@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ApiError, api, type CaseView, type Config, type ConfigAgentSession, type InboxView, type PolicyConfig, type PolicyDraft, type Resolution, type Session, type SteeringCase, type WorkflowEvent } from "./api";
+import { ApiError, api, type CaseView, type Config, type ConfigAgentSession, type InboxView, type PolicyConfig, type PolicyDraft, type PolicyPreview, type Resolution, type Session, type SteeringCase, type WorkflowEvent } from "./api";
 
 const views: Array<{ id: InboxView; label: string; hint: string }> = [
   { id: "attention", label: "Needs attention", hint: "Waiting for judgment" },
@@ -219,6 +219,7 @@ function ConfigWorkspace({ config, canManage }: { config: Config; canManage: boo
   const [changeSummary, setChangeSummary] = useState("");
   const [prompt, setPrompt] = useState("");
   const [agentSession, setAgentSession] = useState<ConfigAgentSession>();
+  const [preview, setPreview] = useState<PolicyPreview>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
@@ -228,6 +229,7 @@ function ConfigWorkspace({ config, canManage }: { config: Config; canManage: boo
     setActive(result.active);
     setHistory(result.history);
     setEditor(JSON.stringify(policyDraft(result.active), null, 2));
+    setPreview(undefined);
   }, []);
 
   useEffect(() => { void load().catch((nextError) => setError(errorMessage(nextError))); }, [load]);
@@ -242,6 +244,15 @@ function ConfigWorkspace({ config, canManage }: { config: Config; canManage: boo
       setChangeSummary("");
       setAgentSession(undefined);
       await load();
+    } catch (nextError) { setError(errorMessage(nextError)); }
+    finally { setBusy(false); }
+  };
+
+  const previewDraft = async (draft?: PolicyDraft) => {
+    setBusy(true); setError(undefined); setNotice(undefined);
+    try {
+      const parsed = draft ?? JSON.parse(editor) as PolicyDraft;
+      setPreview(await api.previewPolicy(parsed));
     } catch (nextError) { setError(errorMessage(nextError)); }
     finally { setBusy(false); }
   };
@@ -282,10 +293,11 @@ function ConfigWorkspace({ config, canManage }: { config: Config; canManage: boo
       <div className="config-stack">
         <section className="config-card">
           <div className="config-card-heading"><div><span className="eyebrow">Active policy</span><h2>{active?.name ?? "Loading…"}</h2></div><span>{active?.rules.filter((rule) => rule.enabled).length ?? 0} enabled rules</span></div>
-          {active && <div className="config-meta"><span>Fallback: {humanize(active.defaultOutcome)}</span><span>Activated by {active.createdBy.displayName}</span><span>{formatDate(active.createdAt)}</span><span>Source automation guarded off</span></div>}
+          {active && <div className="config-meta"><span>Fallback: {humanize(active.defaultOutcome)}</span><span>Activated by {active.createdBy.displayName}</span><span>{formatDate(active.createdAt)}</span><span>Prelude export automation enabled</span></div>}
           <textarea className="config-editor" aria-label="Policy configuration JSON" spellCheck={false} value={editor} onChange={(event) => setEditor(event.target.value)} disabled={!canManage || busy} />
           <label className="config-label">Change summary<input value={changeSummary} onChange={(event) => setChangeSummary(event.target.value)} maxLength={500} placeholder="Why this policy version should replace the current one" disabled={!canManage || busy} /></label>
-          <div className="config-actions"><button className="decision-button primary" disabled={!canManage || busy || !changeSummary.trim() || !active} onClick={() => void activateDirect()}>{busy ? "Working…" : "Validate and activate"}</button><button className="ghost-button" disabled={busy || !active} onClick={() => active && setEditor(JSON.stringify(policyDraft(active), null, 2))}>Reset editor</button></div>
+          <div className="config-actions"><button className="ghost-button" disabled={!canManage || busy || !active} onClick={() => void previewDraft()}>Preview impact</button><button className="decision-button primary" disabled={!canManage || busy || !changeSummary.trim() || !active} onClick={() => void activateDirect()}>{busy ? "Working…" : "Validate and activate"}</button><button className="ghost-button" disabled={busy || !active} onClick={() => { if (active) setEditor(JSON.stringify(policyDraft(active), null, 2)); setPreview(undefined); }}>Reset editor</button></div>
+          {preview && <PolicyPreviewPanel preview={preview} />}
           {!canManage && <p className="permission-note">You can inspect policy, but `steering.manage` is required to change it or use the authoring agent.</p>}
         </section>
 
@@ -308,12 +320,21 @@ function ConfigWorkspace({ config, canManage }: { config: Config; canManage: boo
         {agentSession?.proposedConfig && <div className="agent-proposal">
           <div><span className="eyebrow">Reviewable proposal</span><h3>{agentSession.proposedConfig.name}</h3><p>{agentSession.proposalSummary}</p></div>
           <pre>{JSON.stringify(agentSession.proposedConfig, null, 2)}</pre>
-          <button className="decision-button primary" disabled={!canManage || busy || agentSession.status !== "active"} onClick={() => void activateProposal()}>{agentSession.status === "applied" ? "Activated" : "Activate exact proposal"}</button>
+          <div className="config-actions"><button className="ghost-button" disabled={busy} onClick={() => void previewDraft(agentSession.proposedConfig)}>Preview proposal</button><button className="decision-button primary" disabled={!canManage || busy || agentSession.status !== "active"} onClick={() => void activateProposal()}>{agentSession.status === "applied" ? "Activated" : "Activate exact proposal"}</button></div>
         </div>}
         {agentSession && <button className="ghost-button new-agent-session" disabled={busy} onClick={() => { setAgentSession(undefined); setPrompt(""); }}>Start new discussion</button>}
       </section>
     </div>
   </section>;
+}
+
+function PolicyPreviewPanel({ preview }: { preview: PolicyPreview }) {
+  return <div className="policy-preview">
+    <div><strong>{preview.changedCases} changed</strong><span>{preview.evaluatedCases} evaluated · {preview.automaticCases} automatic</span></div>
+    {preview.warnings.map((warning) => <p key={warning}>{warning}</p>)}
+    <div className="preview-cases">{preview.cases.filter((item) => item.changed || item.proposedOutcome === "automatic").map((item) => <div key={item.caseId}><strong>{item.title}</strong><span>{humanize(item.currentOutcome)} → {humanize(item.proposedOutcome)} · {item.proposedRuleId}</span></div>)}</div>
+    {!!preview.unusedRuleIds.length && <small>Unmatched enabled rules: {preview.unusedRuleIds.join(", ")}</small>}
+  </div>;
 }
 
 function policyDraft(config: PolicyConfig): PolicyDraft {
@@ -415,6 +436,12 @@ function CaseDetail({ item, canDecide, advisor, onMutation }: {
         <div className="context-facts"><span>{item.risk} risk</span><span>{item.reversible ? "Reversible" : "Not reversible"}</span><span>Revision {item.sourceRevision}</span></div>
       </div>
 
+      {item.riskAssessment && <div className="risk-assessment-card">
+        <div><span className="eyebrow">Steering risk assessment</span><strong>{humanize(item.riskAssessment.level)}</strong></div>
+        <p>{item.riskAssessment.explanation}</p>
+        <small>{item.riskAssessment.classifierId} · {item.riskAssessment.classifierVersion} · {item.riskAssessment.factors.join(" · ")}</small>
+      </div>}
+
       <DetailSection title="Context"><p>{item.summary}</p></DetailSection>
       <DetailSection title="Proposed action"><p>{item.proposedAction}</p></DetailSection>
       <DetailSection title="Recommendation"><p>{item.recommendation}</p></DetailSection>
@@ -440,6 +467,14 @@ function CaseDetail({ item, canDecide, advisor, onMutation }: {
           <div><span>{advisor ? `Advisor: ${advisor.mode === "fake" ? "offline test mode" : advisor.model ?? "OpenRouter"}` : "Advisor unavailable"}</span><button className="ghost-button" disabled={busy || !message.trim()} onClick={() => void sendMessage()}>Add note</button><button className="decision-button primary" disabled={busy || !message.trim() || !advisor} onClick={() => void askAdvisor()}>{busy ? "Working…" : "Ask advisor"}</button></div>
         </div>}
       </DetailSection>
+
+      {!!item.escalations?.length && <DetailSection title="Escalation">
+        <div className="escalation-list">{item.escalations.map((entry) => <div key={entry.id}><div><strong>{entry.status === "open" ? "Awaiting qualified decision" : "Escalation closed"}</strong><span>{entry.requiredPermission}</span></div><p>{entry.reason}</p><small>Fallback: remain paused{entry.deadlineAt ? ` · Deadline ${formatDate(entry.deadlineAt)}` : ""}</small></div>)}</div>
+      </DetailSection>}
+
+      {!!item.attempts?.length && <DetailSection title="Steering lifecycle">
+        <div className="attempt-list">{item.attempts.map((attempt) => <div key={attempt.id}><span className={`attempt-dot status-${attempt.status}`} /><div><strong>{humanize(attempt.kind)} · {humanize(attempt.status)}</strong><p>{attempt.summary}</p><small>{attempt.actor.displayName} · {formatDate(attempt.createdAt)}{attempt.policyId ? ` · ${attempt.policyId}` : ""}</small></div></div>)}</div>
+      </DetailSection>}
 
       {active && canDecide && <div className="decision-box">
         <label htmlFor="rationale">Decision note <span>Required for rejection, revision, and escalation</span></label>

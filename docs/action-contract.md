@@ -17,4 +17,4 @@ Receipt states are `applied`, `already_applied`, `accepted`, `stale`, `rejected`
 
 The first transport supports one configured destination instance per product. Notifications carry `source.instanceId`; Steering refuses invocation when it does not match the configured instance, preventing a case from being sent to the wrong Helix or sibling process. A future registry may support several explicitly configured instances.
 
-Risk assessment and resource ownership routing are not part of this contract. Source products report deterministic state and effects; source-backed cases are currently displayed as `unassessed` and remain administrator-decided until a later Steering risk policy exists.
+Risk assessment and resource ownership routing are not part of this transport contract. Source products report deterministic state and effects. Steering derives organizational risk separately from the action key and structured facts; the reference classifier currently recognizes only a few bounded actions and leaves unknown actions `unassessed`.

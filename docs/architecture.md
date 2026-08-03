@@ -33,15 +33,21 @@ It governs whether Steering may invoke a valid source action. It cannot weaken p
 
 The evaluator reads the active immutable `acme.steering.policy.v1` version. Rules use bounded exact action, risk, reversibility, and scalar-fact conditions; they are evaluated in declared order with a safe explicit fallback. Policy activation never retroactively rewrites a case's recorded evaluation.
 
+Before activation, the same evaluator can preview a draft against current cases. Preview is read-only: it reports changed classifications, automatic cases, warnings, and unused rules without rewriting policy or case history.
+
+### Risk classifier
+
+Steering, not a workflow owner, assigns the delegation risk used by policy. The first classifier is deterministic and deliberately narrow: it derives risk from an allowlisted action, reversibility, and structured workflow facts, records its classifier identity and explanation, and leaves unknown actions `unassessed`. A sibling-provided risk label is never treated as authoritative.
+
 ### Configuration author
 
 The Configuration screen supports direct declarative editing and agent-assisted authoring. Both paths produce the same complete policy document, pass through the same deterministic validator, and require a separate human activation guarded by `steering.manage`.
 
 The authoring agent receives the active policy and its own conversation only. It has no product adapter, sibling-specific endpoint, case-decision tool, policy activation tool, or implicit Observability access. Without a model credential, a deterministic fake author preserves the complete local test journey. This component is distinct from the deferred case advisor: it helps write configuration, not decide a workflow case.
 
-### Escalation router (deferred)
+### Escalation router
 
-Routes by permission and resource ownership rather than fixed role names. It records deadlines, reminders, authorized delegation, higher-authority routing, and the declared safe behavior when nobody responds.
+The first slice routes by required permission rather than fixed role names and records an optional deadline plus an explicit `remain_paused` fallback. Resolution closes the open escalation. Resource ownership, reminders, authorized delegation, higher-authority ladders, and active timeout processing remain deferred.
 
 ### Product adapters
 
@@ -51,7 +57,7 @@ Adapters never import sibling source packages, read sibling databases, or attach
 
 The first implemented seam is a source-pushed, versioned notification with idempotent ingestion. It is best-effort and post-transaction: source success never waits for Steering. Every event enters the Activity journal; actionable event state creates, refreshes, or closes one stable case. See [workflow-notifications.md](workflow-notifications.md).
 
-This slice implements narrow remote command delivery through [action-contract.md](action-contract.md). It uses server-held scoped credentials, instance and trusted-origin matching, live source-revision validation, allowlisted action keys, and authoritative receipts. It does not implement generic workflow mutation, ownership routing, advisor access to source products, or risk assessment.
+This slice implements narrow remote command delivery through [action-contract.md](action-contract.md). It uses server-held scoped credentials, instance and trusted-origin matching, live source-revision validation, allowlisted action keys, and authoritative receipts. The accepted, reversible Prelude export is the first complete automatic journey; the other actions remain human-authorized. It does not implement generic workflow mutation, ownership routing, or advisor access to source products.
 
 ### Case advisor
 
@@ -61,7 +67,7 @@ Advisor answers are visibly attributed generated discussion. They distinguish in
 
 ### Local store
 
-The current SQLite store durably preserves cases, policy results, discussion, structured resolutions, actor attribution, and fixture application outcomes. It is designed to grow toward:
+The current SQLite store durably preserves cases, policy results, risk assessments, discussion, structured resolutions, actor attribution, escalation state, and each automatic authorization, delivery, invocation, and reconciliation attempt. It is designed to grow toward:
 
 - cases and source revision references;
 - policy identity, version, input facts, result, and explanation;

@@ -63,6 +63,22 @@ export interface PolicyConfig extends PolicyDraft {
   createdBy: Principal;
   changeSummary: string;
 }
+export interface PolicyPreview {
+  valid: true;
+  evaluatedCases: number;
+  changedCases: number;
+  automaticCases: number;
+  cases: Array<{
+    caseId: string;
+    title: string;
+    currentOutcome: PolicyOutcome;
+    proposedOutcome: PolicyOutcome;
+    proposedRuleId: string;
+    changed: boolean;
+  }>;
+  unusedRuleIds: string[];
+  warnings: string[];
+}
 export interface ConfigAgentSession {
   id: string;
   status: "active" | "error" | "applied";
@@ -102,6 +118,13 @@ export interface SteeringCase {
   proposedAction: string;
   recommendation: string;
   risk: "unassessed" | "low" | "medium" | "high";
+  riskAssessment?: {
+    level: "unassessed" | "low" | "medium" | "high";
+    classifierId: string;
+    classifierVersion: string;
+    explanation: string;
+    factors: string[];
+  };
   reversible: boolean;
   evidence: Array<{ label: string; detail: string; url?: string }>;
   choices: Choice[];
@@ -126,6 +149,27 @@ export interface SteeringCase {
   appliedAt?: string;
   messageCount: number;
   messages?: CaseMessage[];
+  attempts?: Array<{
+    id: number;
+    kind: string;
+    status: string;
+    summary: string;
+    actor: Principal;
+    policyId?: string;
+    policyVersion?: string;
+    createdAt: string;
+  }>;
+  escalations?: Array<{
+    id: number;
+    requiredPermission: string;
+    reason: string;
+    deadlineAt?: string;
+    fallback: "remain_paused";
+    status: "open" | "closed";
+    createdBy: Principal;
+    createdAt: string;
+    closedAt?: string;
+  }>;
 }
 
 export interface WorkflowEvent {
@@ -185,6 +229,10 @@ export const api = {
     method: "POST",
   }),
   policyConfig: () => json<{ active: PolicyConfig; history: PolicyConfig[] }>("/api/policy-config"),
+  previewPolicy: (config: PolicyDraft) => json<PolicyPreview>("/api/policy-config/preview", {
+    method: "POST",
+    body: JSON.stringify({ config }),
+  }),
   activatePolicy: (config: PolicyDraft, expectedVersion: number, changeSummary: string) =>
     json<PolicyConfig>("/api/policy-config/activate", {
       method: "POST",

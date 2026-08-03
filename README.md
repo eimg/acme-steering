@@ -2,7 +2,7 @@
 
 Acme Steering is the optional local decision inbox and policy-guided human-steering layer for the Acme Software Factory. It coordinates when valid product actions may proceed automatically, when a person must decide, and how unresolved decisions are routed without replacing the products that own the underlying workflows.
 
-**Status:** runnable local Steering service. The durable inbox, explicit decisions, workflow notification and decision adapters, four narrow product-owned actions, versioned delegation configuration with an optional authoring agent, a case-bound read-only advisor, and shared Acme Identity client integration are implemented. Escalation routing, source-specific decision handling, risk assessment, and advisor evidence enrichment remain deferred.
+**Status:** runnable local Steering service. The durable inbox, explicit decisions, workflow notification and decision adapters, four narrow product-owned actions, versioned delegation configuration with preview and an optional authoring agent, a case-bound read-only advisor, Steering-owned reference risk classification, minimal capability-routed escalation, durable action attempts, and shared Acme Identity client integration are implemented. Rich ownership routing, reminders and expiry, broader automatic policies, and advisor evidence enrichment remain deferred.
 
 **Reserved default port:** `8323`
 
@@ -19,14 +19,14 @@ Acme Steering
 ├── Steering Inbox       human decisions, clarifications, and interventions
 ├── Delegation Policies  automatic, human-required, denied, deferred, escalated
 ├── Decision History     requests, discussion, resolutions, and application outcomes
-├── Escalation           classified cases now; routing, reminders, and expiry later
+├── Escalation           capability route and safe fallback now; reminders and expiry later
 ├── Optional Advisor     case-bound, read-only assistance for the human
 └── Product Adapters     existing public reads and actions; no sibling database access
 ```
 
 The primary UI is intentionally email-shaped: a finite `Needs attention` list, a case detail with evidence and explicit actions, an `Automated` view, and durable `History`. It is not a chat product, project tracker, activity feed, or replacement for Acme Observability.
 
-The Configuration screen is a bounded exception to the case-shaped inbox: operators may inspect and directly edit the active declarative policy or discuss it with a config authoring agent. The agent receives only the policy and its conversation, produces advice or a complete proposal, and cannot activate its own work.
+The Configuration screen is a bounded exception to the case-shaped inbox: operators may inspect and directly edit the active declarative policy or discuss it with a config authoring agent. Either proposal can be previewed against current cases before activation. The agent receives only the policy and its conversation, produces advice or a complete proposal, and cannot activate its own work.
 
 ## Ownership boundary
 
@@ -81,7 +81,7 @@ In `local` mode, Steering uses the same `acme-identity` consumer package and ses
 
 Prelude, Helix, Acme Issues, and Acme Projects can optionally publish durable workflow events. Configure `ACME_STEERING_URL=http://127.0.0.1:8323`; in local-auth mode also configure a scoped `ACME_STEERING_TOKEN`. See [Workflow notification contract](docs/workflow-notifications.md).
 
-Steering sends every source-backed human disposition to the owning product's durable decision ledger; this does not prescribe or perform its next workflow transition. Approval may additionally invoke one narrow product-owned action. Steering uses separate destination credentials and distinguishes decision acknowledgement from authoritative application evidence. See the [Source decision contract](docs/decision-contract.md) and [Product-owned action contract](docs/action-contract.md). Risk remains explicitly unassessed in this mechanical slice; advisor and risk-policy work are deferred.
+Steering sends every source-backed human disposition to the owning product's durable decision ledger; this does not prescribe or perform its next workflow transition. Approval may additionally invoke one narrow product-owned action. The accepted, reversible Prelude export is the first deliberately bounded automatic reference journey. Steering derives its risk classification from the action contract and structured facts rather than trusting a sibling-provided label, acts under a visible service principal, and records authorization, delivery, invocation, and reconciliation attempts separately. See the [Source decision contract](docs/decision-contract.md) and [Product-owned action contract](docs/action-contract.md).
 
 `npm start` remains the production-build entrypoint. The root `start-acme.sh` launcher uses `npm run dev`, as it does for the other suite services.
 
@@ -95,4 +95,4 @@ This runs typechecking, policy/store/API tests, and the production build.
 
 ## Current implementation boundary
 
-The shipped slice retains deterministic fixtures and adds optional source-pushed workflow adapters, an Activity journal, durable source decision ledgers, explicit retry for unavailable decision delivery, product-owned mechanical action invocation, immutable policy versions, and case-bound advice. Direct JSON authoring and agent proposals converge on the same validator and require explicit `steering.manage` activation. Advisor exchanges converge on ordinary durable case discussion and never authorize. Existing cases retain their evaluated policy snapshot. Issues and Projects project decisions into existing comments, Prelude shows them in inception detail, and Helix shows checkpoint effects without treating a notice as a run command. Reminders or expiry, background delivery retry, broader source-specific handling policies, ownership routing, risk assessment, and advisor access to authorized external context remain deferred.
+The shipped slice retains deterministic fixtures and adds optional source-pushed workflow adapters, an Activity journal, durable source decision ledgers, explicit retry for unavailable decision delivery, product-owned mechanical action invocation, immutable policy versions with impact preview, case-bound advice, a small Steering-owned risk classifier, minimal escalation records, and durable attempt history. Direct JSON authoring and agent proposals converge on the same validator and require explicit `steering.manage` activation. Advisor exchanges converge on ordinary durable case discussion and never authorize. Existing cases retain their evaluated policy snapshot. Issues and Projects project decisions into existing comments, Prelude shows them in inception detail, and Helix shows checkpoint effects without treating a notice as a run command. Reminders or expiry, background delivery retry, broader automatic handling policies, ownership assignment, and advisor access to authorized external context remain deferred.

@@ -1,7 +1,11 @@
 import type Database from "better-sqlite3";
 import { evaluatePolicy } from "./policy.js";
 import { PolicyConfigStore } from "./configStore.js";
+import { assessNotificationRisk, policyFactsWithAssessment } from "./risk.js";
 import type {
+  ActionAttempt,
+  ActionAttemptKind,
+  CaseEscalation,
   CaseDetail,
   CaseKind,
   CaseMessage,
@@ -12,6 +16,7 @@ import type {
   PolicyFacts,
   Resolution,
   RiskLevel,
+  RiskAssessment,
   SteeringActor,
   SteeringCase,
   WorkflowEventRecord,
@@ -39,6 +44,7 @@ export interface NewCase {
   evidence: EvidenceLink[];
   choices: CaseChoice[];
   facts: PolicyFacts;
+  riskAssessment?: RiskAssessment;
   createdAt?: string;
   initialStatus?: CaseStatus;
   initialResolution?: Resolution;
@@ -127,7 +133,7 @@ export class SteeringStore {
       facts: input.facts,
     }, this.policyConfigs.active());
     const now = input.createdAt ?? new Date().toISOString();
-    const automatic = policy.outcome === "automatic";
+    const automatic = policy.outcome === "automatic" && input.initialStatus === undefined;
     const status = input.initialStatus ?? (automatic ? "applied" : "pending");
     const resolution = input.initialResolution ?? (automatic ? "approve" : undefined);
     const actor = input.initialActor ?? (automatic ? steeringService : undefined);
@@ -139,14 +145,14 @@ export class SteeringStore {
     this.db.prepare(`
       INSERT INTO steering_cases (
         id, kind, title, source_product, source_ref, source_revision, action,
-        reason, summary, proposed_action, recommendation, risk, reversible,
+        reason, summary, proposed_action, recommendation, risk, risk_assessment_json, reversible,
         evidence_json, choices_json, facts_json, policy_id, policy_version,
         policy_outcome, policy_explanation, status, resolution, rationale,
         resolved_by_json, application_summary, created_at, updated_at,
         resolved_at, applied_at
       ) VALUES (
         @id, @kind, @title, @sourceProduct, @sourceRef, @sourceRevision, @action,
-        @reason, @summary, @proposedAction, @recommendation, @risk, @reversible,
+        @reason, @summary, @proposedAction, @recommendation, @risk, @riskAssessmentJson, @reversible,
         @evidenceJson, @choicesJson, @factsJson, @policyId, @policyVersion,
         @policyOutcome, @policyExplanation, @status, @resolution, @rationale,
         @resolvedByJson, @applicationSummary, @createdAt, @updatedAt,
@@ -158,6 +164,7 @@ export class SteeringStore {
       evidenceJson: JSON.stringify(input.evidence),
       choicesJson: JSON.stringify(input.choices),
       factsJson: JSON.stringify(input.facts),
+      riskAssessmentJson: input.riskAssessment ? JSON.stringify(input.riskAssessment) : null,
       policyId: policy.policyId,
       policyVersion: policy.policyVersion,
       policyOutcome: policy.outcome,
@@ -190,6 +197,14 @@ export class SteeringStore {
     return rows.map(mapCase);
   }
 
+  listAllCases(): SteeringCase[] {
+    const rows = this.db.prepare(`
+      SELECT c.*, (SELECT COUNT(*) FROM case_messages m WHERE m.case_id = c.id) AS message_count
+      FROM steering_cases c ORDER BY updated_at DESC, id ASC
+    `).all() as CaseRow[];
+    return rows.map(mapCase);
+  }
+
   summary(): Record<CaseView, number> {
     return {
       attention: this.listCases("attention").length,
@@ -204,7 +219,12 @@ export class SteeringStore {
       FROM steering_cases c WHERE c.id = ?
     `).get(id) as CaseRow | undefined;
     if (!row) throw new CaseNotFoundError(`Steering case not found: ${id}`);
-    return { ...mapCase(row), messages: this.listMessages(id) };
+    return {
+      ...mapCase(row),
+      messages: this.listMessages(id),
+      attempts: this.listAttempts(id),
+      escalations: this.listEscalations(id),
+    };
   }
 
   addMessage(caseId: string, body: string, author: SteeringActor): CaseDetail {
@@ -228,6 +248,26 @@ export class SteeringStore {
         new Date(Date.parse(now) + index).toISOString(),
       ));
       this.db.prepare("UPDATE steering_cases SET updated_at = ? WHERE id = ?").run(updatedAt, caseId);
+    })();
+    return this.getCase(caseId);
+  }
+
+  authorizeAutomatic(caseId: string, decisionId: string): CaseDetail {
+    const current = this.getCase(caseId);
+    if (current.status !== "pending" || current.policy.outcome !== "automatic" || current.facts.sourceNotification !== true) {
+      throw new CaseConflictError("This case is not eligible for automatic authorization");
+    }
+    const now = new Date().toISOString();
+    const summary = `Automatically authorized by ${current.policy.policyId} (${current.policy.policyVersion}).`;
+    this.db.transaction(() => {
+      this.db.prepare(`
+        UPDATE steering_cases SET status='awaiting_source', resolution='approve', rationale=?,
+          resolved_by_json=?, decision_id=?, application_summary=?, updated_at=?, resolved_at=?
+        WHERE id=?
+      `).run(summary, JSON.stringify(steeringService), decisionId,
+        "Delegation is recorded; the source product must acknowledge the action.", now, now, caseId);
+      this.insertAttempt(caseId, "automatic_authorization", "authorized", summary, steeringService, now, decisionId, current.policy);
+      this.insertSystemMessage(caseId, summary, now);
     })();
     return this.getCase(caseId);
   }
@@ -303,10 +343,27 @@ export class SteeringStore {
       decisionId ?? null,
       applicationSummary,
       now,
-      now,
+      resolution === "escalate" ? null : now,
       status === "applied" ? now : null,
       caseId,
     );
+    if (resolution === "escalate") {
+      const sourceBacked = current.facts.sourceNotification === true;
+      const requiredPermission = !sourceBacked && typeof current.facts.escalationPermission === "string"
+        ? current.facts.escalationPermission
+        : "steering.decide";
+      const deadlineAt = !sourceBacked && typeof current.facts.escalationDeadlineAt === "string"
+        ? current.facts.escalationDeadlineAt
+        : undefined;
+      this.createEscalation(caseId, {
+        requiredPermission,
+        reason: rationale || current.policy.explanation,
+        deadlineAt,
+        actor,
+      });
+    } else {
+      this.closeEscalations(caseId, now);
+    }
     return this.getCase(caseId);
   }
 
@@ -323,6 +380,8 @@ export class SteeringStore {
         WHERE id=?
       `).run(receipt.status, receipt.summary, now, now, caseId);
       this.insertSystemMessage(caseId, `Source decision delivery: ${receipt.summary}`, now);
+      this.insertAttempt(caseId, "decision_delivery", receipt.status, receipt.summary,
+        current.resolvedBy ?? steeringService, now, receipt.decisionId, current.policy);
     })();
     return this.getCase(caseId);
   }
@@ -345,8 +404,83 @@ export class SteeringStore {
         status === "applied" ? now : null, now, caseId,
       );
       this.insertSystemMessage(caseId, `Source action receipt: ${receipt.summary}`, now);
+      this.insertAttempt(caseId, "action_invocation", receipt.status, receipt.summary,
+        current.resolvedBy ?? steeringService, now, current.decisionId, current.policy);
     })();
     return this.getCase(caseId);
+  }
+
+  private createEscalation(caseId: string, input: {
+    requiredPermission: string;
+    reason: string;
+    deadlineAt?: string;
+    actor: SteeringActor;
+  }): void {
+    const now = new Date().toISOString();
+    this.db.transaction(() => {
+      this.closeEscalations(caseId, now);
+      this.db.prepare(`
+        INSERT INTO case_escalations (
+          case_id, required_permission, reason, deadline_at, fallback,
+          status, created_by_json, created_at
+        ) VALUES (?, ?, ?, ?, 'remain_paused', 'open', ?, ?)
+      `).run(caseId, input.requiredPermission, input.reason, input.deadlineAt ?? null, JSON.stringify(input.actor), now);
+      const current = this.getCase(caseId);
+      this.insertAttempt(caseId, "escalation", "open",
+        `Escalated to a principal with ${input.requiredPermission}; fallback is remain paused.`,
+        input.actor, now, current.decisionId, current.policy);
+      this.insertSystemMessage(caseId,
+        `Escalation opened for ${input.requiredPermission}; safe fallback: remain paused.`, now);
+    })();
+  }
+
+  private closeEscalations(caseId: string, closedAt: string): void {
+    this.db.prepare("UPDATE case_escalations SET status='closed', closed_at=? WHERE case_id=? AND status='open'")
+      .run(closedAt, caseId);
+  }
+
+  private listAttempts(caseId: string): ActionAttempt[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM action_attempts WHERE case_id=? ORDER BY created_at ASC, id ASC
+    `).all(caseId) as Array<Record<string, unknown>>;
+    return rows.map((row) => ({
+      id: Number(row.id), caseId: String(row.case_id), kind: row.kind as ActionAttemptKind,
+      status: String(row.status), summary: String(row.summary), decisionId: nullable(row.decision_id),
+      actor: parseJson<SteeringActor>(row.actor_json, steeringService),
+      policyId: nullable(row.policy_id), policyVersion: nullable(row.policy_version), createdAt: String(row.created_at),
+    }));
+  }
+
+  private listEscalations(caseId: string): CaseEscalation[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM case_escalations WHERE case_id=? ORDER BY created_at DESC, id DESC
+    `).all(caseId) as Array<Record<string, unknown>>;
+    return rows.map((row) => ({
+      id: Number(row.id), caseId: String(row.case_id), requiredPermission: String(row.required_permission),
+      reason: String(row.reason), deadlineAt: nullable(row.deadline_at), fallback: "remain_paused",
+      status: row.status as CaseEscalation["status"],
+      createdBy: parseJson<SteeringActor>(row.created_by_json, steeringService),
+      createdAt: String(row.created_at), closedAt: nullable(row.closed_at),
+    }));
+  }
+
+  private insertAttempt(
+    caseId: string,
+    kind: ActionAttemptKind,
+    status: string,
+    summary: string,
+    actor: SteeringActor,
+    createdAt: string,
+    decisionId?: string,
+    policy?: SteeringCase["policy"],
+  ): void {
+    this.db.prepare(`
+      INSERT INTO action_attempts (
+        case_id, kind, status, summary, decision_id, actor_json,
+        policy_id, policy_version, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(caseId, kind, status, summary, decisionId ?? null, JSON.stringify(actor),
+      policy?.policyId ?? null, policy?.policyVersion ?? null, createdAt);
   }
 
   private listMessages(caseId: string): CaseMessage[] {
@@ -365,6 +499,12 @@ export class SteeringStore {
 
   private syncNotificationCase(caseId: string, notification: WorkflowNotification, now: string): CaseDetail {
     const steering = notification.steering!;
+    const riskAssessment = assessNotificationRisk(notification);
+    const sourceFacts = policyFactsWithAssessment({
+      ...steering.facts,
+      sourceNotification: true,
+      sourceInstance: notification.source.instanceId ?? "default",
+    }, riskAssessment);
     const currentRow = this.db.prepare("SELECT id, source_revision, status FROM steering_cases WHERE id = ?").get(caseId) as
       { id: string; source_revision: string; status: CaseStatus } | undefined;
     const sourceRef = `${notification.source.resourceType}:${notification.source.resourceId}`;
@@ -390,8 +530,8 @@ export class SteeringStore {
         summary: notification.event.detail ?? notification.event.summary,
         proposedAction: steering.proposedAction ?? "No action remains available.",
         recommendation: steering.recommendation ?? "Review the source event for context.",
-        risk: "unassessed", reversible: steering.reversible ?? true,
-        evidence: steering.evidence ?? sourceEvidence(notification), choices: [], facts: steering.facts ?? {},
+        risk: riskAssessment.level, riskAssessment, reversible: steering.reversible ?? true,
+        evidence: steering.evidence ?? sourceEvidence(notification), choices: [], facts: sourceFacts,
         createdAt: notification.event.occurredAt, initialStatus: "withdrawn",
         applicationSummary: systemNote,
       });
@@ -405,9 +545,9 @@ export class SteeringStore {
         summary: notification.event.detail ?? notification.event.summary,
         proposedAction: steering.proposedAction ?? "Choose how this workflow should proceed.",
         recommendation: steering.recommendation ?? "Inspect the source context before deciding.",
-        risk: "unassessed", reversible: steering.reversible ?? false,
+        risk: riskAssessment.level, riskAssessment, reversible: steering.reversible ?? false,
         evidence: steering.evidence ?? sourceEvidence(notification), choices: steering.choices ?? defaultChoices(),
-        facts: { ...steering.facts, sourceNotification: true, sourceInstance: notification.source.instanceId ?? "default" }, createdAt: notification.event.occurredAt, initialStatus: "pending",
+        facts: sourceFacts, createdAt: notification.event.occurredAt, initialStatus: "pending",
       });
       this.insertSystemMessage(caseId, systemNote, now);
       return this.getCase(created.id);
@@ -416,13 +556,13 @@ export class SteeringStore {
     if (steering.state === "open") {
       const policy = evaluatePolicy({
         action: steering.action ?? notification.event.type,
-        risk: "unassessed",
+        risk: riskAssessment.level,
         reversible: steering.reversible ?? false,
-        facts: { ...steering.facts, sourceNotification: true },
+        facts: sourceFacts,
       }, this.policyConfigs.active());
       this.db.prepare(`
         UPDATE steering_cases SET kind=?, title=?, source_ref=?, source_revision=?, action=?, reason=?, summary=?,
-          proposed_action=?, recommendation=?, risk=?, reversible=?, evidence_json=?, choices_json=?, facts_json=?,
+          proposed_action=?, recommendation=?, risk=?, risk_assessment_json=?, reversible=?, evidence_json=?, choices_json=?, facts_json=?,
           policy_id=?, policy_version=?, policy_outcome=?, policy_explanation=?, status='pending', resolution=NULL,
           rationale=NULL, resolved_by_json=NULL, application_summary=NULL, decision_id=NULL,
           decision_delivery_status=NULL, decision_delivery_summary=NULL, decision_delivered_at=NULL,
@@ -433,15 +573,21 @@ export class SteeringStore {
         steering.action ?? notification.event.type, steering.reason ?? notification.event.summary,
         notification.event.detail ?? notification.event.summary,
         steering.proposedAction ?? "Choose how this workflow should proceed.",
-        steering.recommendation ?? "Inspect the source context before deciding.", "unassessed",
-        steering.reversible === true ? 1 : 0, JSON.stringify(steering.evidence ?? sourceEvidence(notification)),
-        JSON.stringify(steering.choices ?? defaultChoices()), JSON.stringify({ ...steering.facts, sourceNotification: true, sourceInstance: notification.source.instanceId ?? "default" }),
+        steering.recommendation ?? "Inspect the source context before deciding.", riskAssessment.level,
+        JSON.stringify(riskAssessment), steering.reversible === true ? 1 : 0, JSON.stringify(steering.evidence ?? sourceEvidence(notification)),
+        JSON.stringify(steering.choices ?? defaultChoices()), JSON.stringify(sourceFacts),
         policy.policyId, policy.policyVersion, policy.outcome, policy.explanation, now, caseId,
       );
     } else {
       const status: CaseStatus = steering.state === "resolved" ? "applied" : steering.state === "superseded" ? "stale" : "withdrawn";
       this.db.prepare(`UPDATE steering_cases SET source_revision=?, status=?, application_summary=?, updated_at=?, resolved_at=? WHERE id=?`)
         .run(notification.source.revision, status, systemNote, now, now, caseId);
+      this.closeEscalations(caseId, now);
+      if (steering.state === "resolved") {
+        const current = this.getCase(caseId);
+        this.insertAttempt(caseId, "reconciliation", "confirmed", systemNote,
+          steeringService, now, current.decisionId, current.policy);
+      }
     }
     this.insertSystemMessage(caseId, systemNote, now);
     return this.getCase(caseId);
@@ -479,6 +625,9 @@ function mapCase(row: CaseRow): SteeringCase {
     proposedAction: String(row.proposed_action),
     recommendation: String(row.recommendation),
     risk: row.risk as RiskLevel,
+    riskAssessment: row.risk_assessment_json
+      ? parseJson<RiskAssessment | undefined>(row.risk_assessment_json, undefined)
+      : undefined,
     reversible: Boolean(row.reversible),
     evidence: parseJson<EvidenceLink[]>(row.evidence_json, []),
     choices: parseJson<CaseChoice[]>(row.choices_json, []),

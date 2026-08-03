@@ -1,6 +1,6 @@
 # Implementation plan
 
-**Status:** phase 1 first pass implemented; phase 1 completion items remain
+**Status:** standalone and first integration slices implemented; later operational breadth remains
 
 The plan intentionally proves one local mechanism at a time. Do not begin with cross-suite automation or external channels.
 
@@ -23,17 +23,21 @@ Implemented now:
 - Fixture cases for decision, clarification, revision, and escalation.
 - Explicit structured resolution separate from discussion.
 - Small versioned policy evaluator demonstrating automatic and human-required outcomes.
+- Read-only policy preview against current cases.
+- Steering-owned bounded risk assessment with unknown actions left unassessed.
 - Immutable declarative policy versions with direct editing and config-agent proposals behind explicit human activation.
 - Fixture application acknowledgement, stale handling, rejection suppression, and restart recovery.
 - Standalone local operator; no sibling services, model, or network required.
 - Optional Acme Identity HTTP adapter with fail-closed shared mode.
 - One offline verification command covering typecheck, tests, build, and acceptance flow.
+- Durable automatic authorization, delivery, invocation, reconciliation, and escalation attempts.
+- Minimal permission-routed escalation with an explicit remain-paused fallback.
 
 Still to complete before the phase exit:
 
 - Scheduled expiry and explicit safe-timeout behavior.
-- Fixture coverage for policy exceptions and richer action-attempt history.
-- Case ownership, assignment, reminder, delegation, and escalation routing.
+- Scheduled escalation reminders and timeout processing.
+- Case ownership, assignment, delegation, and higher-authority routing.
 
 Exit: every journey in `PROJECT_SPEC.md` section 5 is demonstrated.
 
@@ -43,6 +47,7 @@ Exit: every journey in `PROJECT_SPEC.md` section 5 is demonstrated.
 - Steering journals information events and synchronizes stable actionable cases.
 - Duplicate delivery is idempotent and later source actions resolve or supersede stale cases.
 - Administrator approval invokes the first allowlisted product actions and records authoritative receipts; asynchronous acceptance still waits for a source event.
+- The accepted, reversible Prelude export is automatically authorized under the Steering service principal; other source actions remain human-authorized.
 - Every source-backed human disposition is delivered through `acme.steering.decision.v1` and durably acknowledged by the workflow owner without generic state mutation.
 - The Projects → Issues → Helix boundary remains unchanged.
 
@@ -58,7 +63,7 @@ Exit: Steering can be stopped and the original manual journey still works unchan
 
 Exit: Identity failure in shared mode fails closed without affecting standalone mode.
 
-The mechanical edge credentials and product reauthorization are implemented. Ownership, delegation, and risk-based automation in this phase remain deferred.
+The mechanical edge credentials, product reauthorization, and one narrow risk-based automatic journey are implemented. Ownership and delegation remain deferred.
 
 ## Phase 4 — cross-product coverage
 

@@ -81,15 +81,15 @@ export function evaluatePolicy(
   input: PolicyInput,
   config: SteeringPolicyConfig = defaultPolicyConfig("1970-01-01T00:00:00.000Z"),
 ): PolicyDecision {
-  // The current product-adapter slice supports human-approved actions only. Keep
-  // configuration authoring useful without silently enabling an execution path
-  // that does not yet have retries, service-principal delivery, and reconciliation.
-  if (input.facts.sourceNotification === true) {
+  // Only Prelude's bounded accepted-export action has a complete automatic
+  // reference loop. Other source actions stay human-required even if a broad
+  // configuration rule would otherwise match.
+  if (input.facts.sourceNotification === true && input.action !== "prelude.package_accepted_export") {
     return decision(
       "source-automation-not-enabled",
       config.version,
       "human_required",
-      "Source-backed automatic execution is not enabled in this slice, so an administrator must decide.",
+      "This source action has no complete automatic host contract, so an administrator must decide.",
     );
   }
   const rule = config.rules.find((candidate) => candidate.enabled && matches(candidate, input));

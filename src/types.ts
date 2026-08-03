@@ -38,6 +38,14 @@ export type Resolution =
 
 export type RiskLevel = "unassessed" | "low" | "medium" | "high";
 
+export interface RiskAssessment {
+  level: RiskLevel;
+  classifierId: string;
+  classifierVersion: string;
+  explanation: string;
+  factors: string[];
+}
+
 export interface EvidenceLink {
   label: string;
   detail: string;
@@ -159,6 +167,7 @@ export interface SteeringCase {
   proposedAction: string;
   recommendation: string;
   risk: RiskLevel;
+  riskAssessment?: RiskAssessment;
   reversible: boolean;
   evidence: EvidenceLink[];
   choices: CaseChoice[];
@@ -180,6 +189,34 @@ export interface SteeringCase {
   messageCount: number;
 }
 
+export type ActionAttemptKind = "automatic_authorization" | "decision_delivery" | "action_invocation" | "reconciliation" | "escalation";
+
+export interface ActionAttempt {
+  id: number;
+  caseId: string;
+  kind: ActionAttemptKind;
+  status: string;
+  summary: string;
+  decisionId?: string;
+  actor: SteeringActor;
+  policyId?: string;
+  policyVersion?: string;
+  createdAt: string;
+}
+
+export interface CaseEscalation {
+  id: number;
+  caseId: string;
+  requiredPermission: string;
+  reason: string;
+  deadlineAt?: string;
+  fallback: "remain_paused";
+  status: "open" | "closed";
+  createdBy: SteeringActor;
+  createdAt: string;
+  closedAt?: string;
+}
+
 export interface CaseMessage {
   id: number;
   caseId: string;
@@ -190,6 +227,27 @@ export interface CaseMessage {
 
 export interface CaseDetail extends SteeringCase {
   messages: CaseMessage[];
+  attempts: ActionAttempt[];
+  escalations: CaseEscalation[];
+}
+
+export interface PolicyPreviewCase {
+  caseId: string;
+  title: string;
+  currentOutcome: PolicyOutcome;
+  proposedOutcome: PolicyOutcome;
+  proposedRuleId: string;
+  changed: boolean;
+}
+
+export interface PolicyPreview {
+  valid: true;
+  evaluatedCases: number;
+  changedCases: number;
+  automaticCases: number;
+  cases: PolicyPreviewCase[];
+  unusedRuleIds: string[];
+  warnings: string[];
 }
 
 export type WorkflowProduct = "prelude" | "helix" | "acme-issues" | "acme-projects";

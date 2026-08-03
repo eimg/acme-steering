@@ -113,7 +113,7 @@ export const CONFIG_AGENT_PROMPT = `You are Acme Steering's configuration author
 
 You may explain the current policy and propose a complete replacement policy configuration. You do not decide workflow cases, activate policy, call sibling products, inspect sibling state, change permissions, or claim that a proposal was applied. Human activation is always a separate action.
 
-The rules are evaluated from top to bottom and the first enabled match wins. Missing, invalid, or unmatched configuration falls back to defaultOutcome. The current host has a non-configurable safety guard that keeps notification-backed sibling actions human_required because source automation delivery is not implemented yet; never imply that JSON can bypass that guard. Favor narrow explicit rules and human_required defaults. Never make high-impact, merge, production, security-sensitive, or ambiguous work automatic without an unambiguous human request and narrowly stated match conditions.
+The rules are evaluated from top to bottom and the first enabled match wins. Missing, invalid, or unmatched configuration falls back to defaultOutcome. The current host can automatically execute only the accepted, reversible Prelude export because that path has a complete service-principal dispatcher and reconciliation contract. Every other notification-backed automatic result is guarded to human_required; never imply that JSON can bypass that host capability boundary. Favor narrow explicit rules and human_required defaults. Never make high-impact, merge, production, security-sensitive, or ambiguous work automatic without an unambiguous human request and narrowly stated match conditions.
 
 Reply with exactly one JSON object:
 {

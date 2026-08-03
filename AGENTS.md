@@ -43,7 +43,7 @@ Treat this as an executable reference architecture, not a universal governance p
 - The root gitlink and portable GitHub remote already exist.
 - The suite launcher starts Steering last through `npm run dev`; standalone development uses the same command.
 - Fixture cases still use deterministic acknowledgements. Source-backed cases enter through `acme.steering.notification.v1`; all resolutions return through `acme.steering.decision.v1`, while approval may invoke only an allowlisted `acme.steering.action.v1` command. A decision receipt is not application evidence.
-- Source-backed risk is currently `unassessed`. Do not infer risk from sibling-provided labels or add ownership routing until those distinct layers are designed.
+- Steering derives bounded reference risk from the action contract and structured facts; never trust sibling-provided risk labels as authority. Unknown actions remain `unassessed`, and ownership routing remains a distinct later layer.
 - Current human access is administrator-only. Do not infer or invent workflow ownership; preserve the source product/resource seam for a later explicit ownership model.
 - Notification delivery is optional, post-transaction, bounded, idempotent, and non-blocking. Source products remain useful when Steering is absent.
 - An unavailable decision delivery may be retried explicitly with the same decision ID. Do not invent blind action retries or represent a retry attempt as an applied workflow effect.

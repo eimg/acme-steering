@@ -44,6 +44,7 @@ import {
   resolveCaseAdvisorModel,
   type CaseAdvisor,
 } from "./caseAdvisor.js";
+import { previewPolicyChange } from "./policyPreview.js";
 
 const views = new Set<CaseView>(["attention", "automated", "history"]);
 const resolutions = new Set<Resolution>([
@@ -109,6 +110,15 @@ export async function createApp(context: AppContext): Promise<Express> {
     authenticate,
     requirePermission("steering.read"),
     (_req, res) => res.json({ active: policyConfigs.active(), history: policyConfigs.history() }),
+  );
+  app.post(
+    "/api/policy-config/preview",
+    authenticate,
+    requirePermission("steering.manage"),
+    (req, res) => {
+      try { res.json(previewPolicyChange(req.body?.config, policyConfigs, store)); }
+      catch (error) { sendConfigError(res, error); }
+    },
   );
   app.post(
     "/api/policy-config/activate",
@@ -197,7 +207,27 @@ export async function createApp(context: AppContext): Promise<Express> {
         return res.status(403).json({ error: `Missing permission: ${permission}` });
       }
       const result = store.ingestNotification(notification);
-      res.status(result.duplicate ? 200 : 202).json({ ok: true, ...result });
+      let automated = false;
+      if (!result.duplicate && result.case?.policy.outcome === "automatic" && result.case.status === "pending") {
+        const decisionId = randomUUID();
+        let current = store.authorizeAutomatic(result.case.id, decisionId);
+        const decisionReceipt = await actionDispatcher.notifyDecision(current, decisionId);
+        current = store.recordDecisionReceipt(current.id, decisionReceipt);
+        if (decisionReceipt.status === "recorded" || decisionReceipt.status === "already_recorded") {
+          current = store.recordActionReceipt(current.id, await actionDispatcher.invoke(current, decisionId));
+        } else {
+          current = store.recordActionReceipt(current.id, {
+            schemaVersion: "acme.steering.action-receipt.v1",
+            requestId: `${current.id}:${current.sourceRevision}:${decisionId}`,
+            status: "rejected",
+            sourceRevision: current.sourceRevision,
+            summary: "Automatic action was not invoked because the source did not record its delegation decision.",
+          });
+        }
+        result.case = current;
+        automated = true;
+      }
+      res.status(result.duplicate ? 200 : 202).json({ ok: true, automated, ...result });
     },
   );
   app.get(

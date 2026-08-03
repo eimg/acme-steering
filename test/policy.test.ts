@@ -44,14 +44,21 @@ describe("fixture delegation policy", () => {
     }).outcome, "deny");
   });
 
-  it("keeps source-backed automatic execution guarded off in the current adapter slice", () => {
-    const decision = evaluatePolicy({
+  it("allows only the bounded Prelude source action through the automatic reference loop", () => {
+    const prelude = evaluatePolicy({
       action: "prelude.package_accepted_export",
       risk: "low",
       reversible: true,
       facts: { accepted: true, sourceNotification: true },
     });
-    assert.equal(decision.outcome, "human_required");
-    assert.equal(decision.policyId, "source-automation-not-enabled");
+    assert.equal(prelude.outcome, "automatic");
+    const other = evaluatePolicy({
+      action: "issues.trigger_implementation",
+      risk: "low",
+      reversible: true,
+      facts: { accepted: true, sourceNotification: true },
+    });
+    assert.equal(other.outcome, "human_required");
+    assert.equal(other.policyId, "source-automation-not-enabled");
   });
 });

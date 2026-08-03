@@ -58,9 +58,9 @@ The current `acme.steering.policy.v1` configuration implements this boundary nar
 
 Each activation creates an immutable integer version with actor, timestamp, and change summary. New cases use the active version; existing case evaluations remain historical snapshots. Concurrent or agent proposals based on an older version fail closed and must be reviewed again.
 
-The current adapter slice does not execute source-backed actions automatically. A host-owned guard therefore classifies notification-backed cases as `human_required` even if an operator drafts an automatic rule. Enabling source automation later requires an intentional service-principal dispatcher, retry and reconciliation behavior, and dedicated verification; changing JSON alone cannot unlock a missing execution boundary.
+The host enables source-backed automation only where the full contract exists. The accepted, reversible Prelude export is the first such path: Steering derives a low-risk assessment, authorizes it under its service principal, delivers the durable decision, invokes Prelude's allowlisted action, and records the receipt. Every other source-backed automatic result is guarded back to `human_required`; changing JSON alone cannot unlock a missing execution boundary.
 
-That evaluator applies only to deterministic fixtures. Source-backed mechanical actions are currently `unassessed` and administrator-decided. Workflow owners provide deterministic state and effects but do not assign the organizational risk level; a later Steering policy layer will derive risk from structured impact facts.
+The initial deterministic risk classifier belongs to Steering. It derives a bounded assessment from the action key, reversibility, and structured facts, ignores sibling-provided risk labels as authority, and leaves unknown actions `unassessed`. This is inspectable reference logic rather than a universal organizational risk model.
 
 ## Rejection and revision
 
@@ -101,5 +101,7 @@ It appears in `Automated` and `History`; it never appears as though a named huma
 ## Policy evolution
 
 Policy changes remain deliberate human activations. Operators may edit the declarative JSON directly or ask the config authoring agent to explain and propose a complete replacement. Agent output passes through the same deterministic validator, stays inactive until the operator activates the exact proposal, and never becomes a policy evaluation by itself.
+
+Before activation, either form can be previewed against current cases. Preview reports changed classifications, automatic cases, warnings, and unused rules without mutating the active version or historical case snapshots.
 
 The config agent sees only the active policy and its conversation. It has no sibling access, case-resolution authority, workflow tools, or permission to activate. Steering does not learn or modify policy from outcomes. A future Decision Intelligence product may propose changes, but activation remains explicit, versioned, reviewable, and reversible.
