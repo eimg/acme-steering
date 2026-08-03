@@ -142,6 +142,15 @@ describe("steering HTTP API", () => {
   it("applies an admin-approved source action only from its authoritative receipt", async () => {
     const db = openDatabase(":memory:");
     const dispatcher: ActionDispatcher = {
+      async notifyDecision(item, decisionId) {
+        return {
+          schemaVersion: "acme.steering.decision-receipt.v1",
+          decisionId,
+          status: "recorded",
+          sourceRevision: item.sourceRevision,
+          summary: "The source recorded the human decision.",
+        };
+      },
       async invoke(item, decisionId) {
         return {
           schemaVersion: "acme.steering.action-receipt.v1",
@@ -164,7 +173,40 @@ describe("steering HTTP API", () => {
       .send({ resolution: "approve", sourceRevision: "1" }).expect(200);
     assert.equal(resolved.body.status, "applied");
     assert.equal(resolved.body.sourceRevision, "2");
+    assert.equal(resolved.body.decisionDeliveryStatus, "recorded");
+    assert.match(resolved.body.decisionDeliverySummary, /recorded the human decision/i);
     assert.match(resolved.body.applicationSummary, /source product applied/);
+    db.close();
+  });
+
+  it("delivers non-approval decisions without invoking a source workflow action", async () => {
+    const db = openDatabase(":memory:");
+    const calls: string[] = [];
+    const dispatcher: ActionDispatcher = {
+      async notifyDecision(item, decisionId) {
+        calls.push(`notice:${item.resolution}`);
+        return {
+          schemaVersion: "acme.steering.decision-receipt.v1", decisionId, status: "recorded",
+          sourceRevision: item.sourceRevision, summary: "The source recorded the requested revision.",
+        };
+      },
+      async invoke() {
+        calls.push("action");
+        throw new Error("Non-approval resolutions must not invoke a workflow action.");
+      },
+    };
+    const app = await createApp({ db, authAdapter: createStandaloneAuthAdapter(), seed: false, actionDispatcher: dispatcher });
+    await request(app).post("/api/notifications").send({
+      schemaVersion: "acme.steering.notification.v1", id: "projects:card:5:ready:1",
+      source: { product: "acme-projects", resourceType: "card", resourceId: "5", revision: "1" },
+      event: { type: "card.ready", occurredAt: "2026-08-03T00:00:00.000Z", summary: "Card ready" },
+      steering: { caseKey: "card:5:submit", state: "open", action: "projects.submit_ready_card" },
+    }).expect(202);
+    const resolved = await request(app).post("/api/cases/acme-projects%3Acard%3A5%3Asubmit/resolve")
+      .send({ resolution: "request_revision", rationale: "Clarify scope.", sourceRevision: "1" }).expect(200);
+    assert.deepEqual(calls, ["notice:request_revision"]);
+    assert.equal(resolved.body.status, "revision_requested");
+    assert.equal(resolved.body.decisionDeliveryStatus, "recorded");
     db.close();
   });
 });

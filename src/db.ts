@@ -45,6 +45,10 @@ function migrate(db: Database.Database): void {
       resolution TEXT,
       rationale TEXT,
       resolved_by_json TEXT,
+      decision_id TEXT,
+      decision_delivery_status TEXT,
+      decision_delivery_summary TEXT,
+      decision_delivered_at TEXT,
       application_summary TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
@@ -89,4 +93,11 @@ function migrate(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_workflow_events_resource
       ON workflow_events(source_product, source_resource_type, source_resource_id, occurred_at DESC);
   `);
+
+  const caseColumns = new Set((db.prepare("PRAGMA table_info(steering_cases)").all() as Array<{ name: string }>)
+    .map((column) => column.name));
+  if (!caseColumns.has("decision_id")) db.exec("ALTER TABLE steering_cases ADD COLUMN decision_id TEXT");
+  if (!caseColumns.has("decision_delivery_status")) db.exec("ALTER TABLE steering_cases ADD COLUMN decision_delivery_status TEXT");
+  if (!caseColumns.has("decision_delivery_summary")) db.exec("ALTER TABLE steering_cases ADD COLUMN decision_delivery_summary TEXT");
+  if (!caseColumns.has("decision_delivered_at")) db.exec("ALTER TABLE steering_cases ADD COLUMN decision_delivered_at TEXT");
 }

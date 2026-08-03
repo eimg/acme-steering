@@ -1,6 +1,6 @@
 # Product-owned action contract
 
-`acme.steering.action.v1` is the mechanical command envelope used after an administrator approves a source-backed case. Steering sends it only to the configured base URL for the case's product and instance. Credentials are server-held, edge-specific, and attached only to an explicitly trusted origin.
+`acme.steering.action.v1` is the mechanical command envelope used after an administrator approves a source-backed case. The human disposition is first communicated through the separate [source decision contract](decision-contract.md); reject, request revision, defer, escalate, and cancel do not invoke this action contract. Steering sends commands only to the configured base URL for the case's product and instance. Credentials are server-held, edge-specific, and attached only to an explicitly trusted origin.
 
 The request carries a stable request id, case and decision correlation, an allowlisted action key, resource identity, and the source revision the administrator inspected. It does not carry a generic URL, HTTP method, status mutation, owner, or risk decision.
 

@@ -107,6 +107,10 @@ export interface SteeringCase {
   resolution?: Resolution;
   rationale?: string;
   resolvedBy?: SteeringActor;
+  decisionId?: string;
+  decisionDeliveryStatus?: SteeringDecisionReceipt["status"];
+  decisionDeliverySummary?: string;
+  decisionDeliveredAt?: string;
   applicationSummary?: string;
   createdAt: string;
   updatedAt: string;
@@ -186,6 +190,26 @@ export interface SteeringActionReceipt {
   summary: string;
   eventId?: string;
   operationId?: string;
+}
+
+export interface SteeringDecisionNotice {
+  schemaVersion: "acme.steering.decision.v1";
+  decisionId: string;
+  caseId: string;
+  actionKey: string;
+  resolution: Resolution;
+  rationale: string;
+  decidedAt: string;
+  actor: Pick<SteeringActor, "id" | "issuer" | "username" | "displayName" | "kind">;
+  resource: { type: string; id: string; expectedRevision: string };
+}
+
+export interface SteeringDecisionReceipt {
+  schemaVersion: "acme.steering.decision-receipt.v1";
+  decisionId: string;
+  status: "recorded" | "already_recorded" | "stale" | "rejected" | "unavailable";
+  sourceRevision: string;
+  summary: string;
 }
 
 export type CaseView = "attention" | "automated" | "history";

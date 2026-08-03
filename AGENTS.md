@@ -22,7 +22,8 @@ Treat this as an executable reference architecture, not a universal governance p
 - Steering follows existing product boundaries. It must not create a Projects → Helix shortcut or make Prelude trigger Helix directly.
 - Automatic actions use an attributable service principal and record the policy version; they never masquerade as human decisions.
 - Discussion never implies authorization. Resolution is explicit and structured.
-- An unchanged human-rejected proposal is not automatically retried.
+- Every source-backed resolution is delivered through `acme.steering.decision.v1`; the source records it but owns what happens next. Only an explicit product action contract may request a transition.
+- An unchanged human-rejected, deferred, revision-requested, or escalated proposal is not automatically reopened.
 - Stale decisions are not applied after relevant source state changes.
 - Acme Identity is optional and replaceable. Gates use permission strings, never fixed role names.
 - Observability stays read-only and optional. Never read a sibling database or expand Observability into a decision-content warehouse.
@@ -38,7 +39,7 @@ Treat this as an executable reference architecture, not a universal governance p
 - Current route gates are `steering.read` and `steering.decide`; `steering.manage` and `steering.automate` are exposed as future capability seams.
 - The root gitlink and portable GitHub remote already exist.
 - The suite launcher starts Steering last through `npm run dev`; standalone development uses the same command.
-- Fixture cases still use deterministic acknowledgements. Source-backed cases enter through `acme.steering.notification.v1`; approval invokes only an allowlisted `acme.steering.action.v1` command and must not be described as applied without an authoritative product receipt or confirming event.
+- Fixture cases still use deterministic acknowledgements. Source-backed cases enter through `acme.steering.notification.v1`; all resolutions return through `acme.steering.decision.v1`, while approval may invoke only an allowlisted `acme.steering.action.v1` command. A decision receipt is not application evidence.
 - Source-backed risk is currently `unassessed`. Do not infer risk from sibling-provided labels or add ownership routing until those distinct layers are designed.
 - Current human access is administrator-only. Do not infer or invent workflow ownership; preserve the source product/resource seam for a later explicit ownership model.
 - Notification delivery is optional, post-transaction, bounded, idempotent, and non-blocking. Source products remain useful when Steering is absent.

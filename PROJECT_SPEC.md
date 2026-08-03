@@ -113,6 +113,7 @@ The first real adapter should be selected only after verifying the owning produc
 - One verification command covering typechecking, policy, persistence, HTTP/auth behavior, and production build.
 - Optional `acme.steering.notification.v1` ingestion from Prelude, Helix, Issues, and Projects with an idempotent Activity journal and source-event reconciliation.
 - Source-backed approval waits for source confirmation rather than claiming a domain effect.
+- Every source-backed human disposition is durably returned to the workflow owner; receipt records steering input but leaves the next domain transition product-owned.
 
 ### Still required to complete the original gate
 

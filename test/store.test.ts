@@ -114,16 +114,46 @@ describe("steering store", () => {
     db.close();
   });
 
-  it("does not reopen an unchanged proposal after rejection", () => {
+  for (const [resolution, status] of [
+    ["reject", "rejected"],
+    ["defer", "deferred"],
+    ["request_revision", "revision_requested"],
+    ["escalate", "escalated"],
+  ] as const) {
+    it(`does not reopen an unchanged proposal after ${resolution}`, () => {
+      const db = openDatabase(":memory:");
+      const store = new SteeringStore(db);
+      const opened = store.ingestNotification(notification("ready", "open", "1")).case!;
+      store.resolveCase({ caseId: opened.id, resolution, rationale: "Human decision.", expectedRevision: "1", actor: admin });
+      const repeated = notification("ready-again", "open", "1");
+      repeated.id = `projects:7:ready-again:${resolution}:same-revision`;
+      const result = store.ingestNotification(repeated);
+      assert.equal(result.case?.status, status);
+      assert.match(result.case?.messages.at(-1)?.body ?? "", new RegExp(`remains ${status}`));
+      db.close();
+    });
+  }
+
+  it("reopens a human-resolved case only when the source revision changes", () => {
     const db = openDatabase(":memory:");
     const store = new SteeringStore(db);
     const opened = store.ingestNotification(notification("ready", "open", "1")).case!;
-    store.resolveCase({ caseId: opened.id, resolution: "reject", rationale: "Not now.", expectedRevision: "1", actor: admin });
-    const repeated = notification("ready-again", "open", "1");
-    repeated.id = "projects:7:ready-again:same-revision";
-    const result = store.ingestNotification(repeated);
-    assert.equal(result.case?.status, "rejected");
-    assert.match(result.case?.messages.at(-1)?.body ?? "", /remains suppressed/);
+    const decided = store.resolveCase({
+      caseId: opened.id, resolution: "request_revision", rationale: "Clarify scope.", expectedRevision: "1",
+      decisionId: "decision-1", actor: admin,
+    });
+    store.recordDecisionReceipt(decided.id, {
+      schemaVersion: "acme.steering.decision-receipt.v1", decisionId: "decision-1", status: "recorded",
+      sourceRevision: "1", summary: "Recorded.",
+    });
+
+    const revised = notification("revised", "open", "2");
+    revised.id = "projects:7:revised:2";
+    const result = store.ingestNotification(revised).case!;
+    assert.equal(result.status, "pending");
+    assert.equal(result.sourceRevision, "2");
+    assert.equal(result.decisionId, undefined);
+    assert.equal(result.decisionDeliveryStatus, undefined);
     db.close();
   });
 

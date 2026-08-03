@@ -150,15 +150,20 @@ export async function createApp(context: AppContext): Promise<Express> {
       }
       if (rationale.length > 2_000) return res.status(400).json({ error: "rationale must be 2000 characters or fewer" });
       try {
+        const decisionId = randomUUID();
         let resolved = store.resolveCase({
           caseId: String(req.params.id),
           resolution,
           rationale,
           expectedRevision,
           actor: principalFrom(res)!,
+          decisionId,
         });
+        if (resolved.facts.sourceNotification === true) {
+          resolved = store.recordDecisionReceipt(resolved.id, await actionDispatcher.notifyDecision(resolved, decisionId));
+        }
         if (resolved.status === "awaiting_source" && resolution === "approve") {
-          resolved = store.recordActionReceipt(resolved.id, await actionDispatcher.invoke(resolved, randomUUID()));
+          resolved = store.recordActionReceipt(resolved.id, await actionDispatcher.invoke(resolved, decisionId));
         }
         res.json(resolved);
       } catch (error) {

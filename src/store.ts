@@ -16,6 +16,7 @@ import type {
   WorkflowEventRecord,
   WorkflowNotification,
   SteeringActionReceipt,
+  SteeringDecisionReceipt,
 } from "./types.js";
 
 type CaseRow = Record<string, unknown>;
@@ -220,12 +221,14 @@ export class SteeringStore {
     rationale,
     expectedRevision,
     actor,
+    decisionId,
   }: {
     caseId: string;
     resolution: Resolution;
     rationale: string;
     expectedRevision: string;
     actor: SteeringActor;
+    decisionId?: string;
   }): CaseDetail {
     const current = this.getCase(caseId);
     if (!["pending", "deferred", "escalated", "revision_requested"].includes(current.status)) {
@@ -273,19 +276,37 @@ export class SteeringStore {
     this.db.prepare(`
       UPDATE steering_cases
       SET status = ?, resolution = ?, rationale = ?, resolved_by_json = ?,
-          application_summary = ?, updated_at = ?, resolved_at = ?, applied_at = ?
+          decision_id = ?, application_summary = ?, updated_at = ?, resolved_at = ?, applied_at = ?
       WHERE id = ?
     `).run(
       status,
       resolution,
       rationale,
       JSON.stringify(actor),
+      decisionId ?? null,
       applicationSummary,
       now,
       now,
       status === "applied" ? now : null,
       caseId,
     );
+    return this.getCase(caseId);
+  }
+
+  recordDecisionReceipt(caseId: string, receipt: SteeringDecisionReceipt): CaseDetail {
+    const current = this.getCase(caseId);
+    if (current.decisionId && current.decisionId !== receipt.decisionId) {
+      throw new CaseConflictError("Decision receipt does not match the current decision");
+    }
+    const now = new Date().toISOString();
+    this.db.transaction(() => {
+      this.db.prepare(`
+        UPDATE steering_cases
+        SET decision_delivery_status=?, decision_delivery_summary=?, decision_delivered_at=?, updated_at=?
+        WHERE id=?
+      `).run(receipt.status, receipt.summary, now, now, caseId);
+      this.insertSystemMessage(caseId, `Source decision delivery: ${receipt.summary}`, now);
+    })();
     return this.getCase(caseId);
   }
 
@@ -337,8 +358,10 @@ export class SteeringStore {
       this.insertSystemMessage(caseId, `${systemNote} (older source event recorded; case state unchanged)`, now);
       return this.getCase(caseId);
     }
-    if (currentRow?.status === "rejected" && currentRow.source_revision === notification.source.revision && steering.state === "open") {
-      this.insertSystemMessage(caseId, `${systemNote} (the unchanged rejected proposal remains suppressed)`, now);
+    const settledHumanStatuses: CaseStatus[] = ["rejected", "deferred", "revision_requested", "escalated"];
+    if (currentRow && settledHumanStatuses.includes(currentRow.status)
+      && currentRow.source_revision === notification.source.revision && steering.state === "open") {
+      this.insertSystemMessage(caseId, `${systemNote} (the unchanged proposal remains ${currentRow.status})`, now);
       return this.getCase(caseId);
     }
 
@@ -384,7 +407,9 @@ export class SteeringStore {
         UPDATE steering_cases SET kind=?, title=?, source_ref=?, source_revision=?, action=?, reason=?, summary=?,
           proposed_action=?, recommendation=?, risk=?, reversible=?, evidence_json=?, choices_json=?, facts_json=?,
           policy_id=?, policy_version=?, policy_outcome=?, policy_explanation=?, status='pending', resolution=NULL,
-          rationale=NULL, resolved_by_json=NULL, application_summary=NULL, updated_at=?, resolved_at=NULL, applied_at=NULL
+          rationale=NULL, resolved_by_json=NULL, application_summary=NULL, decision_id=NULL,
+          decision_delivery_status=NULL, decision_delivery_summary=NULL, decision_delivered_at=NULL,
+          updated_at=?, resolved_at=NULL, applied_at=NULL
         WHERE id=?
       `).run(
         steering.kind ?? "decision", steering.title ?? notification.event.summary, sourceRef, notification.source.revision,
@@ -453,6 +478,10 @@ function mapCase(row: CaseRow): SteeringCase {
     resolvedBy: row.resolved_by_json
       ? parseJson<SteeringActor>(row.resolved_by_json, steeringService)
       : undefined,
+    decisionId: nullable(row.decision_id),
+    decisionDeliveryStatus: nullable(row.decision_delivery_status) as SteeringCase["decisionDeliveryStatus"],
+    decisionDeliverySummary: nullable(row.decision_delivery_summary),
+    decisionDeliveredAt: nullable(row.decision_delivered_at),
     applicationSummary: nullable(row.application_summary),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),

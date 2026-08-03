@@ -301,6 +301,7 @@ function CaseDetail({ item, canDecide, onMutation }: { item: SteeringCase; canDe
       </div>}
 
       {item.applicationSummary && <div className="application-result"><span>Application outcome</span><strong>{item.applicationSummary}</strong>{item.resolvedBy && <small>{item.resolvedBy.displayName} · {item.resolvedAt ? formatDate(item.resolvedAt) : ""}</small>}</div>}
+      {item.decisionDeliverySummary && <div className="application-result"><span>Source decision delivery · {humanize(item.decisionDeliveryStatus ?? "unknown")}</span><strong>{item.decisionDeliverySummary}</strong>{item.decisionDeliveredAt && <small>{formatDate(item.decisionDeliveredAt)}</small>}</div>}
       {error && <div className="inline-error">{error}</div>}
     </article>
   );

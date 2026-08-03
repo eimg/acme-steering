@@ -28,6 +28,30 @@ it("dispatches an allowlisted action with a destination-bound service token", as
   assert.equal(calls[0].authorization, "Bearer secret");
 });
 
+it("delivers the complete human decision on the separate decision endpoint", async () => {
+  process.env.ACME_STEERING_PROJECTS_URL = "http://projects.test";
+  process.env.ACME_STEERING_PROJECTS_TOKEN = "secret";
+  process.env.ACME_STEERING_TRUSTED_PROJECTS_ORIGINS = "http://projects.test";
+  let delivered: Record<string, unknown> | undefined;
+  const dispatcher = createActionDispatcher(async (input, init) => {
+    delivered = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return Response.json({
+      schemaVersion: "acme.steering.decision-receipt.v1", decisionId: delivered.decisionId,
+      status: "recorded", sourceRevision: "1", summary: "Recorded",
+    });
+  });
+  const item = {
+    ...sourceCase(), resolution: "request_revision" as const, rationale: "Clarify the acceptance criteria.",
+    resolvedBy: { id: "identity:admin", issuer: "acme-identity", username: "admin", displayName: "Administrator", roles: ["admin"], permissions: ["*"], kind: "human" as const },
+    resolvedAt: "2026-08-03T00:01:00Z",
+  };
+  const receipt = await dispatcher.notifyDecision(item, "decision-1");
+  assert.equal(receipt.status, "recorded");
+  assert.equal((delivered?.resource as { expectedRevision: string }).expectedRevision, "1");
+  assert.equal(delivered?.resolution, "request_revision");
+  assert.equal(delivered?.rationale, "Clarify the acceptance criteria.");
+});
+
 it("refuses a mismatched instance or untrusted credential destination", async () => {
   process.env.ACME_STEERING_PROJECTS_URL = "http://projects.test";
   process.env.ACME_STEERING_PROJECTS_TOKEN = "secret";
@@ -51,6 +75,20 @@ it("fails closed for a non-allowlisted action or malformed source receipt", asyn
   assert.equal(calls, 0);
   assert.equal((await dispatcher.invoke(sourceCase(), "decision-2")).status, "unavailable");
   assert.equal(calls, 1);
+});
+
+it("fails closed for a malformed decision receipt", async () => {
+  process.env.ACME_STEERING_PROJECTS_URL = "http://projects.test";
+  const dispatcher = createActionDispatcher(async () => Response.json({
+    schemaVersion: "acme.steering.decision-receipt.v1", decisionId: "wrong", status: "recorded",
+    sourceRevision: "1", summary: "Recorded",
+  }));
+  const item = {
+    ...sourceCase(), resolution: "reject" as const, rationale: "Outside scope.",
+    resolvedBy: { id: "identity:admin", issuer: "acme-identity", username: "admin", displayName: "Administrator", roles: ["admin"], permissions: ["*"], kind: "human" as const },
+    resolvedAt: "2026-08-03T00:01:00Z",
+  };
+  assert.equal((await dispatcher.notifyDecision(item, "decision-1")).status, "unavailable");
 });
 
 function sourceCase(): SteeringCase {

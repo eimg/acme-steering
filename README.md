@@ -2,7 +2,7 @@
 
 Acme Steering is the optional local decision inbox and policy-guided human-steering layer for the Acme Software Factory. It coordinates when valid product actions may proceed automatically, when a person must decide, and how unresolved decisions are routed without replacing the products that own the underlying workflows.
 
-**Status:** runnable standalone first pass. The fixture-backed inbox, durable case history, explicit decisions, a small delegation-policy evaluator, and shared Acme Identity client integration are implemented. Product adapters, escalation routing, and the optional advisor remain deferred.
+**Status:** runnable standalone first pass. The durable inbox, explicit decisions, workflow notification and decision adapters, four narrow product-owned actions, a small delegation-policy evaluator, and shared Acme Identity client integration are implemented. Escalation routing, source-specific decision handling, and the optional advisor remain deferred.
 
 **Reserved default port:** `8323`
 
@@ -49,6 +49,7 @@ The primary UI is intentionally email-shaped: a finite `Needs attention` list, a
 - [`docs/vision.md`](./docs/vision.md) — automatic-with-human-steering direction and product experience.
 - [`docs/architecture.md`](./docs/architecture.md) — ownership, optionality, adapters, Identity, Observability, and advisor boundaries.
 - [`docs/steering-case.md`](./docs/steering-case.md) — durable request, conversation, resolution, and application semantics.
+- [`docs/decision-contract.md`](./docs/decision-contract.md) — versioned human-decision delivery while source products retain workflow ownership.
 - [`docs/policy-model.md`](./docs/policy-model.md) — delegation policy, rejection, escalation, and product-rule separation.
 - [`docs/decisions.md`](./docs/decisions.md) — settled and deliberately deferred choices.
 - [`docs/implementation-plan.md`](./docs/implementation-plan.md) — incremental standalone-first delivery sequence.
@@ -74,7 +75,7 @@ In `local` mode, Steering uses the same `acme-identity` consumer package and ses
 
 Prelude, Helix, Acme Issues, and Acme Projects can optionally publish durable workflow events. Configure `ACME_STEERING_URL=http://127.0.0.1:8323`; in local-auth mode also configure a scoped `ACME_STEERING_TOKEN`. See [Workflow notification contract](docs/workflow-notifications.md).
 
-The same products expose narrow, product-owned action endpoints for administrator-approved cases. Steering uses separate destination credentials and accepts only authoritative product receipts as application evidence. See [Product-owned action contract](docs/action-contract.md). Risk remains explicitly unassessed in this mechanical slice; advisor and risk-policy work are deferred.
+Steering sends every source-backed human disposition to the owning product's durable decision ledger; this does not prescribe or perform its next workflow transition. Approval may additionally invoke one narrow product-owned action. Steering uses separate destination credentials and distinguishes decision acknowledgement from authoritative application evidence. See the [Source decision contract](docs/decision-contract.md) and [Product-owned action contract](docs/action-contract.md). Risk remains explicitly unassessed in this mechanical slice; advisor and risk-policy work are deferred.
 
 `npm start` remains the production-build entrypoint. The root `start-acme.sh` launcher uses `npm run dev`, as it does for the other suite services.
 
@@ -88,4 +89,4 @@ This runs typechecking, policy/store/API tests, and the production build.
 
 ## Current implementation boundary
 
-The shipped slice retains deterministic fixtures and adds optional source-pushed workflow adapters, an Activity journal, and product-owned mechanical action invocation. It demonstrates idempotent ingestion, revision-bound application, authoritative receipts, instance matching, and reconciliation when a direct source action supersedes the inbox. Reminders or expiry, ownership routing, risk assessment, policy editing, and the advisor remain deferred.
+The shipped slice retains deterministic fixtures and adds optional source-pushed workflow adapters, an Activity journal, durable source decision ledgers, and product-owned mechanical action invocation. It demonstrates idempotent ingestion, revision-bound decision acknowledgement and application, authoritative receipts, instance matching, and reconciliation when a direct source action supersedes the inbox. Reminders or expiry, durable delivery retry, source-specific handling policies, ownership routing, risk assessment, policy editing, and the advisor remain deferred.

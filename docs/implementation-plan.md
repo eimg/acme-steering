@@ -42,6 +42,7 @@ Exit: every journey in `PROJECT_SPEC.md` section 5 is demonstrated.
 - Steering journals information events and synchronizes stable actionable cases.
 - Duplicate delivery is idempotent and later source actions resolve or supersede stale cases.
 - Administrator approval invokes the first allowlisted product actions and records authoritative receipts; asynchronous acceptance still waits for a source event.
+- Every source-backed human disposition is delivered through `acme.steering.decision.v1` and durably acknowledged by the workflow owner without generic state mutation.
 - The Projects → Issues → Helix boundary remains unchanged.
 
 Exit: Steering can be stopped and the original manual journey still works unchanged.

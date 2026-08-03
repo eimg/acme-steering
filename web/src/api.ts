@@ -73,6 +73,10 @@ export interface SteeringCase {
   resolution?: Resolution;
   rationale?: string;
   resolvedBy?: Principal;
+  decisionId?: string;
+  decisionDeliveryStatus?: "recorded" | "already_recorded" | "stale" | "rejected" | "unavailable";
+  decisionDeliverySummary?: string;
+  decisionDeliveredAt?: string;
   applicationSummary?: string;
   createdAt: string;
   updatedAt: string;

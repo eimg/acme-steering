@@ -47,7 +47,9 @@ An explicit resolution is one of:
 
 It records the actor, rationale, scope, conditions, and the source revision to which it applies. Policy may require rationale for high-impact decisions.
 
-### 4. Application
+### 4. Source acknowledgement and application
+
+For a source-backed case, Steering first sends the explicit disposition to the source's durable decision ledger. The acknowledgement proves the workflow owner received the human input; it does not prove any domain state changed and does not prescribe the product's next transition.
 
 The source product revalidates authorization and current state, then reports whether the resolution was:
 
@@ -66,7 +68,7 @@ Only successful application proves the domain effect occurred.
 - One logical proposal should not produce multiple active cases through polling or retries.
 - A source revision change may make an existing resolution stale.
 - A materially revised proposal creates a linked successor rather than rewriting history.
-- An unchanged rejected proposal remains suppressed until an authorized person reopens it, policy changes, or relevant facts materially change.
+- An unchanged rejected, deferred, revision-requested, or escalated proposal retains that human disposition. A newer source revision may reopen the case for reconsideration.
 - A human action performed directly in the source product resolves or supersedes the case as an external action; Steering must not repeat it.
 - Withdrawal and expiry retain the full audit record.
 - Discussion, policy evaluation, resolution, and application timestamps remain distinct.

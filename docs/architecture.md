@@ -13,7 +13,7 @@ Acme Identity ------ optional principal and permission resolution
 Acme Observability - optional read-only correlation context
 ```
 
-The source product remains authoritative for domain state and action validity. Steering is authoritative for what it asked, what policy concluded, what the human stated, how it routed the case, and what action it attempted. A successful source response—not an inbox click—is evidence that the domain action was applied.
+The source product remains authoritative for domain state, action validity, and the deterministic response to human direction. Steering is authoritative for what it asked, what policy concluded, what the human stated, how it routed the case, and what action it attempted. A decision receipt proves the source recorded the direction; a successful action receipt or source event—not an inbox click—proves that a domain action was applied.
 
 ## Components
 
@@ -37,7 +37,7 @@ Routes by permission and resource ownership rather than fixed role names. It rec
 
 ### Product adapters
 
-Adapters translate public source state into decision context and invoke existing public source actions. They own source-specific validation, credentials, trusted origins, idempotency keys where supported, and reconciliation after direct product action.
+Adapters translate public source state into decision context, return every disposition to a durable product ledger, and invoke existing public source actions only for explicitly supported approvals. They own source-specific validation, credentials, trusted origins, idempotency keys where supported, and reconciliation after direct product action.
 
 Adapters never import sibling source packages, read sibling databases, or attach a credential to an untrusted origin. Steering must not bypass established workflow ownership merely because two actions are technically reachable.
 
