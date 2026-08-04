@@ -1,6 +1,6 @@
 # Acme Steering
 
-Acme Steering is the optional local decision inbox and policy-guided human-steering layer for the Acme Software Factory. It coordinates when valid product actions may proceed automatically, when a person must decide, and how unresolved decisions are routed without replacing the products that own the underlying workflows.
+Acme Steering is the local decision inbox and policy-guided human-steering layer for the Acme Software Factory. It coordinates when valid product actions may proceed automatically, when a person must decide, and how unresolved decisions are routed without replacing the products that own the underlying workflows. In the reference suite the launcher starts Steering; its detachable stance means source products keep their manual workflows when notifications and actions are unused—not that the composed local factory omits it.
 
 **Status:** runnable local Steering service. The durable inbox, explicit decisions, workflow notification and decision adapters, four narrow product-owned actions, versioned delegation configuration with preview and an optional authoring agent, a case-bound read-only advisor, Steering-owned reference risk classification, minimal capability-routed escalation, durable action attempts, and shared Acme Identity client integration are implemented. Rich ownership routing, reminders and expiry, broader automatic policies, and advisor evidence enrichment remain deferred.
 

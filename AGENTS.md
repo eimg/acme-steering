@@ -1,6 +1,6 @@
 # Acme Steering agent guide
 
-Acme Steering is the optional local decision inbox and delegation-policy coordinator for the Acme Software Factory. The repository contains a runnable local implementation plus workflow-notification and decision adapters for the four workflow-owning siblings.
+Acme Steering is the local decision inbox and delegation-policy coordinator for the Acme Software Factory. The repository contains a runnable local implementation plus workflow-notification and decision adapters for the four workflow-owning siblings. In the reference launcher Steering is part of the composed suite; detachability means source products remain useful without it, not a skip profile.
 
 Treat this as an executable reference architecture, not a universal governance platform. Keep the first implementation focused, independently runnable, and useful without sibling services, credentials, a model provider, or network access.
 
@@ -45,7 +45,7 @@ Treat this as an executable reference architecture, not a universal governance p
 - Fixture cases still use deterministic acknowledgements. Source-backed cases enter through `acme.steering.notification.v1`; all resolutions return through `acme.steering.decision.v1`, while approval may invoke only an allowlisted `acme.steering.action.v1` command. A decision receipt is not application evidence.
 - Steering derives bounded reference risk from the action contract and structured facts; never trust sibling-provided risk labels as authority. Unknown actions remain `unassessed`, and ownership routing remains a distinct later layer.
 - Current human access is administrator-only. Do not infer or invent workflow ownership; preserve the source product/resource seam for a later explicit ownership model.
-- Notification delivery is optional, post-transaction, bounded, idempotent, and non-blocking. Source products remain useful when Steering is absent.
+- Notification delivery is best-effort, post-transaction, bounded, idempotent, and non-blocking. Source products remain useful when Steering notifications and actions are unused.
 - `POST /api/notifications/check` validates a source's product-bound notification permission without ingesting a fake event. Prelude, Helix, Issues, and Projects expose this through their Connections screens; credentials remain server-side.
 - An unavailable decision delivery may be retried explicitly with the same decision ID. Do not invent blind action retries or represent a retry attempt as an applied workflow effect.
 - Policy rules are deterministic, ordered, and first-match-wins. Existing case evaluations remain historical snapshots when a later config version is activated.
