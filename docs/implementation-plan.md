@@ -96,6 +96,6 @@ semantics, background retries, and organization-specific policy remain later wor
 - Replaceable external channel adapters.
 - Durable outbox/retry delivery if best-effort source notification proves insufficient.
 - Separate policy service if independent consumers or deployment needs emerge.
-- Explicit export for a separate Decision Intelligence consumer.
+- Explicit export tailored for Acme Intel beyond the public history/automated case APIs Intel already reads.
 
 These are not part of the first implementation commitment.

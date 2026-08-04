@@ -34,7 +34,7 @@ The Configuration screen is a bounded exception to the case-shaped inbox: operat
 - Steering owns delegation policy, the human interaction record, escalation, and its attempts to invoke product-owned actions.
 - Acme Identity is an optional authentication and permission adapter; it does not own policies or steering cases.
 - Acme Observability remains read-only. Steering may use its allowlisted operational projection for correlation but never grants it workflow authority.
-- A future Decision Intelligence product may consume an explicit export. Learning, skill generation, fine-tuning, and reinforcement learning are outside Steering.
+- [Acme Intel](https://github.com/eimg/acme-intel) is the separate optional think-lab; it may study allowlisted Steering decision experience and propose findings, but learning, skill generation, fine-tuning, reinforcement learning, and silent policy write-back remain outside Steering.
 
 ## Initial journeys
 

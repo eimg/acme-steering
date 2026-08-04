@@ -33,9 +33,9 @@ These decisions form the accepted inception baseline. Future implementation may 
 | First automatic path | Accepted, reversible Prelude export under an attributable Steering service principal |
 | Initial escalation | Required permission plus optional deadline and an explicit remain-paused fallback; ownership routing and reminders remain later work |
 | External channels | Deferred; future notification adapters around the local inbox |
-| Decision Intelligence | Separate optional future product, not part of Steering |
+| Acme Intel | Separate optional think-lab product; may pull allowlisted Steering history, not part of Steering |
 | Default port | `8323` reserved |
-| Launcher | Start Steering last through the root launcher's common `npm run dev` contract |
+| Launcher | Start Steering after Observability and before Intel through the root launcher's common `npm run dev` contract |
 
 ## Deliberately deferred
 
@@ -46,4 +46,4 @@ These decisions form the accepted inception baseline. Future implementation may 
 - Direct advisor adapters to source products or authorized Observability reads.
 - Whether policy later merits an independent headless service.
 - Hosted deployment, multi-organization tenancy, and enterprise policy administration.
-- Decision Intelligence exports beyond preserving ordinary audit-quality steering records.
+- Dedicated Intel export contracts beyond preserving ordinary audit-quality steering records that Intel can already study over public HTTP.

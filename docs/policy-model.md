@@ -104,4 +104,4 @@ Policy changes remain deliberate human activations. Operators may edit the decla
 
 Before activation, either form can be previewed against current cases. Preview reports changed classifications, automatic cases, warnings, and unused rules without mutating the active version or historical case snapshots.
 
-The config agent sees only the active policy and its conversation. It has no sibling access, case-resolution authority, workflow tools, or permission to activate. Steering does not learn or modify policy from outcomes. A future Decision Intelligence product may propose changes, but activation remains explicit, versioned, reviewable, and reversible.
+The config agent sees only the active policy and its conversation. It has no sibling access, case-resolution authority, workflow tools, or permission to activate. Steering does not learn or modify policy from outcomes. Acme Intel may propose policy-oriented findings, but activation remains explicit, versioned, reviewable, and reversible inside Steering.

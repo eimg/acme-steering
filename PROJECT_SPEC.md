@@ -148,7 +148,7 @@ The first real adapter is now the accepted Prelude export checkpoint. It demonst
 - Automatic human merge or production deployment.
 - General project management, chat, email, incident management, or observability feeds.
 - A universal policy language or enterprise governance platform.
-- Decision Intelligence, automatic lesson extraction, Primer episode projection, skill generation, fine-tuning, or reinforcement learning.
+- Acme Intel ownership, automatic lesson extraction, Primer episode projection, skill generation, fine-tuning, or reinforcement learning.
 - Mandatory direct advisor access to every product.
 - Slack, Teams, Telegram, email, or other external channels in the first pass.
 

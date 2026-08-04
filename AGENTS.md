@@ -30,7 +30,7 @@ Treat this as an executable reference architecture, not a universal governance p
 - The implemented advisor is case-bound, read-only, evidence-linked, and non-authoritative. Its first slice sees only the case and durable discussion; direct sibling and Observability access remain deferred. The inbox works without a model provider.
 - The implemented config author sees only the active Steering policy and its own conversation. It may explain and propose a complete replacement config, but only a separate `steering.manage` activation may create a new active version.
 - Keep direct declarative editing available. Agent authoring is an optional interface over the same validated, versioned configuration, not a second policy source.
-- Decision Intelligence, policy self-modification, skill generation, fine-tuning, and reinforcement learning are out of scope.
+- Study and improvement proposals belong to Acme Intel, not Steering. Policy self-modification, skill generation, fine-tuning, and reinforcement learning remain out of scope here.
 
 ## Repository state
 
@@ -41,7 +41,7 @@ Treat this as an executable reference architecture, not a universal governance p
 - Current human route gates are `steering.read`, `steering.decide`, and `steering.manage`; `steering.automate` is the attributable service-principal seam.
 - `steering.manage` now gates direct policy activation and config-agent discussion/activation. `steering.automate` remains the service-principal seam.
 - The root gitlink and portable GitHub remote already exist.
-- The suite launcher starts Steering last through `npm run dev`; standalone development uses the same command.
+- The suite launcher starts Steering after Observability and before Intel through `npm run dev`; standalone development uses the same command.
 - Fixture cases still use deterministic acknowledgements. Source-backed cases enter through `acme.steering.notification.v1`; all resolutions return through `acme.steering.decision.v1`, while approval may invoke only an allowlisted `acme.steering.action.v1` command. A decision receipt is not application evidence.
 - Steering derives bounded reference risk from the action contract and structured facts; never trust sibling-provided risk labels as authority. Unknown actions remain `unassessed`, and ownership routing remains a distinct later layer.
 - Current human access is administrator-only. Do not infer or invent workflow ownership; preserve the source product/resource seam for a later explicit ownership model.

@@ -68,6 +68,6 @@ It may not approve, change policy, bypass authorization, inherit opaque executio
 
 - External notification adapters may announce local cases and deep-link back to the authoritative inbox.
 - A separate headless policy service may emerge when there are real non-inbox consumers.
-- A separate Decision Intelligence product may study exported outcomes and propose policies, precedent, or skills.
+- Acme Intel may study allowlisted decision outcomes and propose policies, precedent, or skills; Steering retains activation authority.
 
-None of those future seams should become a first-pass dependency.
+None of those seams should become a Steering dependency.
